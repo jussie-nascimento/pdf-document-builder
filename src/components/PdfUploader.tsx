@@ -10,39 +10,60 @@ interface Props {
 }
 
 const PdfUploader = ({ onDataExtracted }: Props) => {
-  const [file, setFile] = useState<File | null>(null);
+  const [files, setFiles] = useState<File[]>([]);
   const [loading, setLoading] = useState(false);
   const { toast } = useToast();
 
+  const addFiles = (newFiles: FileList | File[]) => {
+    const pdfs = Array.from(newFiles).filter((f) => f.type === "application/pdf");
+    if (pdfs.length === 0) return;
+    setFiles((prev) => [...prev, ...pdfs]);
+  };
+
   const handleDrop = useCallback((e: React.DragEvent) => {
     e.preventDefault();
-    const dropped = e.dataTransfer.files[0];
-    if (dropped?.type === "application/pdf") setFile(dropped);
+    addFiles(e.dataTransfer.files);
   }, []);
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const selected = e.target.files?.[0];
-    if (selected?.type === "application/pdf") setFile(selected);
+    if (e.target.files) addFiles(e.target.files);
+    e.target.value = "";
+  };
+
+  const removeFile = (index: number) => {
+    setFiles((prev) => prev.filter((_, i) => i !== index));
   };
 
   const extractData = async () => {
-    if (!file) return;
+    if (files.length === 0) return;
     setLoading(true);
     try {
-      const buffer = await file.arrayBuffer();
-      const base64 = btoa(
-        new Uint8Array(buffer).reduce((data, byte) => data + String.fromCharCode(byte), "")
-      );
+      const allFields: Record<string, string> = {};
 
-      const { data, error } = await supabase.functions.invoke("extract-pdf", {
-        body: { pdf: base64 },
-      });
+      for (const file of files) {
+        const buffer = await file.arrayBuffer();
+        const base64 = btoa(
+          new Uint8Array(buffer).reduce((data, byte) => data + String.fromCharCode(byte), "")
+        );
 
-      if (error) throw error;
-      if (data?.fields) {
-        onDataExtracted(data.fields);
-        toast({ title: "Dados extraídos com sucesso!", description: "Os campos foram preenchidos automaticamente." });
+        const { data, error } = await supabase.functions.invoke("extract-pdf", {
+          body: { pdf: base64 },
+        });
+
+        if (error) throw error;
+        if (data?.fields) {
+          // Merge: newer values overwrite only if non-empty
+          for (const [key, value] of Object.entries(data.fields)) {
+            if (value) allFields[key] = value as string;
+          }
+        }
       }
+
+      onDataExtracted(allFields);
+      toast({
+        title: "Dados extraídos com sucesso!",
+        description: `${files.length} arquivo(s) processado(s). Campos preenchidos automaticamente.`,
+      });
     } catch (err) {
       console.error(err);
       toast({ title: "Erro na extração", description: "Não foi possível extrair dados do PDF.", variant: "destructive" });
@@ -56,7 +77,7 @@ const PdfUploader = ({ onDataExtracted }: Props) => {
       <CardHeader>
         <CardTitle className="flex items-center gap-2 text-lg">
           <Upload className="h-5 w-5" />
-          Upload de Contrato (opcional)
+          Upload de Contratos / Formulários (opcional)
         </CardTitle>
       </CardHeader>
       <CardContent>
@@ -65,37 +86,37 @@ const PdfUploader = ({ onDataExtracted }: Props) => {
           onDragOver={(e) => e.preventDefault()}
           className="border-2 border-dashed rounded-lg p-8 text-center hover:border-primary/50 transition-colors"
         >
-          {file ? (
-            <div className="flex items-center justify-center gap-3">
-              <FileText className="h-8 w-8 text-primary" />
-              <div className="text-left">
-                <p className="font-medium text-sm">{file.name}</p>
-                <p className="text-xs text-muted-foreground">{(file.size / 1024).toFixed(1)} KB</p>
-              </div>
-              <Button variant="ghost" size="icon" onClick={() => setFile(null)}>
-                <X className="h-4 w-4" />
-              </Button>
-            </div>
-          ) : (
-            <div>
-              <Upload className="h-10 w-10 mx-auto text-muted-foreground mb-3" />
-              <p className="text-sm text-muted-foreground mb-2">
-                Arraste um PDF aqui ou clique para selecionar
-              </p>
-              <label>
-                <input type="file" accept=".pdf" className="hidden" onChange={handleFileChange} />
-                <Button variant="outline" size="sm" asChild>
-                  <span>Selecionar PDF</span>
-                </Button>
-              </label>
-            </div>
-          )}
+          <Upload className="h-10 w-10 mx-auto text-muted-foreground mb-3" />
+          <p className="text-sm text-muted-foreground mb-2">
+            Arraste PDFs aqui ou clique para selecionar (múltiplos arquivos)
+          </p>
+          <label>
+            <input type="file" accept=".pdf" multiple className="hidden" onChange={handleFileChange} />
+            <Button variant="outline" size="sm" asChild>
+              <span>Selecionar PDFs</span>
+            </Button>
+          </label>
         </div>
-        {file && (
-          <Button onClick={extractData} disabled={loading} className="mt-4 w-full">
-            {loading ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
-            {loading ? "Extraindo dados..." : "Extrair Dados do PDF"}
-          </Button>
+
+        {files.length > 0 && (
+          <div className="mt-4 space-y-2">
+            {files.map((file, i) => (
+              <div key={i} className="flex items-center gap-3 p-2 border rounded-md">
+                <FileText className="h-5 w-5 text-primary shrink-0" />
+                <div className="flex-1 min-w-0">
+                  <p className="font-medium text-sm truncate">{file.name}</p>
+                  <p className="text-xs text-muted-foreground">{(file.size / 1024).toFixed(1)} KB</p>
+                </div>
+                <Button variant="ghost" size="icon" className="shrink-0" onClick={() => removeFile(i)}>
+                  <X className="h-4 w-4" />
+                </Button>
+              </div>
+            ))}
+            <Button onClick={extractData} disabled={loading} className="w-full">
+              {loading ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
+              {loading ? "Extraindo dados..." : `Extrair Dados de ${files.length} arquivo(s)`}
+            </Button>
+          </div>
         )}
       </CardContent>
     </Card>
