@@ -15,13 +15,16 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
-import { ArrowLeft, ArrowRight, Download, Loader2, FileText } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
+import { ArrowLeft, ArrowRight, Download, Loader2, FileText, LogOut } from "lucide-react";
 
 const steps = ["Dados", "Revisão", "Documentos", "Download"];
 
 const Index = () => {
   const [step, setStep] = useState(0);
-  const [selectedDocs, setSelectedDocs] = useState<DocumentType[]>([]);
+  const [selectedDocs, setSelectedDocs] = useState<DocumentType[]>([
+    "procuracao_0km", "coaf", "termo_responsabilidade", "procuracao_usado"
+  ]);
   const [generating, setGenerating] = useState(false);
   const { toast } = useToast();
 
@@ -29,8 +32,9 @@ const Index = () => {
     resolver: zodResolver(formSchema),
     defaultValues: {
       veiculo: {},
-      proprietario: {},
-      avalista: {},
+      veiculoNovo: {},
+      proprietario: { nacionalidade: "Brasileira" },
+      avalista: { nacionalidade: "Brasileira" },
       coaf: { pep: "nao", csnu: "nao", membros: [] },
       data: new Date().toLocaleDateString("pt-BR"),
     },
@@ -99,29 +103,38 @@ const Index = () => {
   };
 
   return (
-    <div className="min-h-screen bg-background">
-      <header className="border-b bg-card">
-        <div className="container mx-auto px-4 py-4 flex items-center gap-3">
-          <FileText className="h-6 w-6 text-primary" />
-          <h1 className="text-xl font-bold text-foreground">Gerador de Documentos</h1>
-          <span className="text-xs text-muted-foreground ml-2">Trinita Veículos</span>
+    <div className="dark min-h-screen bg-background text-foreground flex flex-col font-sans">
+      <header className="border-b bg-card/90 backdrop-blur-md sticky top-0 z-50 shadow-sm">
+        <div className="container mx-auto px-4 py-4 flex flex-col sm:flex-row items-center justify-center sm:justify-between gap-4">
+          <div className="flex items-center gap-4">
+            <img src="/LOGO_IESA.jpg" alt="BYD IESA Logo" className="h-12 object-contain rounded bg-white p-1" />
+            <div className="flex flex-col items-center sm:items-start">
+              <h1 className="text-2xl font-bold bg-gradient-to-r from-primary to-blue-300 bg-clip-text text-transparent">Sistema de Documentação Venda Direta BYD</h1>
+              <span className="text-xs text-muted-foreground uppercase tracking-wider font-semibold">BYD IESA</span>
+            </div>
+          </div>
+          <div className="flex items-center gap-4">
+            <Badge variant="outline" className="text-primary border-primary/50 shadow-[0_0_10px_rgba(37,99,235,0.2)] hidden sm:flex">Portal Premium</Badge>
+            <Button variant="ghost" size="icon" onClick={async () => { await supabase.auth.signOut(); window.location.reload(); }} title="Sair com Segurança">
+              <LogOut className="h-5 w-5 text-muted-foreground hover:text-destructive transition-colors" />
+            </Button>
+          </div>
         </div>
       </header>
 
-      <main className="container mx-auto px-4 py-6 max-w-4xl">
+      <main className="container mx-auto px-4 py-8 max-w-4xl flex-grow">
         <StepperIndicator steps={steps} currentStep={step} />
 
         <FormProvider {...form}>
           <form onSubmit={(e) => e.preventDefault()} className="space-y-6">
-            {step === 0 && (
-              <>
+            <div className={step === 0 ? 'block' : 'hidden'}>
                 <PdfUploader onDataExtracted={handleExtractedData} />
                 <VehicleDataForm form={form} />
                 <NewVehicleDataForm form={form} />
                 <PersonDataForm form={form} prefix="proprietario" title="Proprietário / Outorgante" />
                 <PersonDataForm form={form} prefix="avalista" title="Avalista / Fiador" />
                 <CoafDataForm form={form} />
-                <div className="max-w-xs">
+                <div className="max-w-xs pt-4">
                   <Label htmlFor="data">Data do Documento</Label>
                   <Input
                     id="data"
@@ -130,18 +143,17 @@ const Index = () => {
                     placeholder="dd/mm/aaaa"
                   />
                 </div>
-              </>
-            )}
+            </div>
 
-            {step === 1 && (
-              <DataReview data={form.getValues()} selectedDocs={selectedDocs} />
-            )}
+            <div className={step === 1 ? 'block' : 'hidden'}>
+              <DataReview selectedDocs={selectedDocs} />
+            </div>
 
-            {step === 2 && (
+            <div className={step === 2 ? 'block' : 'hidden'}>
               <DocumentSelector selected={selectedDocs} onChange={setSelectedDocs} />
-            )}
+            </div>
 
-            {step === 3 && (
+            <div className={step === 3 ? 'block' : 'hidden'}>
               <div className="text-center space-y-6 py-12">
                 <Download className="h-16 w-16 mx-auto text-primary" />
                 <div>
@@ -152,10 +164,10 @@ const Index = () => {
                 </div>
                 <Button size="lg" onClick={generateDocuments} disabled={generating}>
                   {generating ? <Loader2 className="h-5 w-5 animate-spin mr-2" /> : <Download className="h-5 w-5 mr-2" />}
-                  {generating ? "Gerando..." : "Gerar e Baixar PDFs"}
+                  <span>{generating ? "Gerando..." : "Gerar e Baixar PDFs"}</span>
                 </Button>
               </div>
-            )}
+            </div>
 
             <div className="flex justify-between pt-4">
               <Button
@@ -164,17 +176,31 @@ const Index = () => {
                 onClick={() => setStep((s) => s - 1)}
                 disabled={step === 0}
               >
-                <ArrowLeft className="h-4 w-4 mr-2" /> Voltar
+                <ArrowLeft className="h-4 w-4 mr-2" /> <span>Voltar</span>
               </Button>
-              {step < 3 && (
-                <Button type="button" onClick={() => setStep((s) => s + 1)}>
-                  Avançar <ArrowRight className="h-4 w-4 ml-2" />
-                </Button>
-              )}
+              <Button 
+                type="button" 
+                onClick={() => setStep((s) => s + 1)} 
+                className={step < 3 ? 'inline-flex' : 'hidden'}
+              >
+                <span>Avançar</span> <ArrowRight className="h-4 w-4 ml-2" />
+              </Button>
             </div>
           </form>
         </FormProvider>
       </main>
+
+      <footer className="mt-8 border-t bg-card/60 backdrop-blur py-8 relative overflow-hidden">
+        <div className="absolute inset-0 bg-gradient-to-r from-blue-900/10 via-background to-blue-900/10" />
+        <div className="container mx-auto px-4 text-center relative z-10">
+          <p className="text-sm font-medium text-foreground tracking-wide">
+            Desenvolvido por <span className="text-primary font-bold">Jussie Nascimento</span>
+          </p>
+          <p className="text-xs text-muted-foreground mt-2 uppercase tracking-widest bg-gradient-to-r from-muted-foreground to-primary bg-clip-text text-transparent">
+            Executivo de Vendas Diretas BYD IESA
+          </p>
+        </div>
+      </footer>
     </div>
   );
 };

@@ -58,16 +58,26 @@ const PdfUploader = ({ onDataExtracted }: Props) => {
       let buyerFields: Record<string, string> = {};
 
       for (const file of files) {
-        const buffer = await file.arrayBuffer();
-        const base64 = btoa(
-          new Uint8Array(buffer).reduce((data, byte) => data + String.fromCharCode(byte), "")
-        );
+        const base64 = await new Promise<string>((resolve, reject) => {
+          const reader = new FileReader();
+          reader.onload = () => {
+            const result = reader.result as string;
+            resolve(result.split(',')[1]);
+          };
+          reader.onerror = reject;
+          reader.readAsDataURL(file);
+        });
 
         const { data, error } = await supabase.functions.invoke("extract-pdf", {
           body: { pdf: base64 },
         });
 
         if (error) throw error;
+
+        console.log("=== RAW PDF TEXT FROM EXTRACTOR ===");
+        console.log(data.rawText);
+        console.log("===================================");
+
         const fields = (data?.fields ?? {}) as Record<string, string>;
         const kind = data?.documentKind as
           | "veiculo"
@@ -96,31 +106,51 @@ const PdfUploader = ({ onDataExtracted }: Props) => {
         ownerName && buyerName ? normalize(ownerName) === normalize(buyerName) : true;
       const requiresAvalista = !!ownerName && !!buyerName && !sameName;
 
-      // Vehicle data: prefer CRLV
-      for (const [k, v] of Object.entries(ownerFields))
-        if (k.startsWith("veiculo.") && v) merged[k] = v;
-      for (const [k, v] of Object.entries(buyerFields))
-        if (k.startsWith("veiculo.") && v && !merged[k]) merged[k] = v;
+      const mergedResult: Record<string, string> = { ...ownerFields, ...merged };
 
+      // Vehicle data: prefer CRLV/Avaliação
+      for (const [k, v] of Object.entries(ownerFields))
+        if (k.startsWith("veiculo.") && v) mergedResult[k] = v;
+      for (const [k, v] of Object.entries(buyerFields))
+        if (k.startsWith("veiculo.") && v && !mergedResult[k]) mergedResult[k] = v;
+
+      // Se houver divergência de nome, tratamos Proprietário vs Avalista
       if (requiresAvalista) {
-        // Buyer (Pedido) -> proprietario (responsável principal)
+        // Pedido de Vendas dita quem é o Proprietário/Outorgante oficial
         for (const [k, v] of Object.entries(buyerFields))
-          if (k.startsWith("proprietario.") && v) merged[k] = v;
-        // Owner (CRLV) -> avalista
-        for (const [k, v] of Object.entries(ownerFields))
+          if (k.startsWith("proprietario.") && v) mergedResult[k] = v;
+
+        // Limpa o CPF/CNPJ do avalista por padrão
+        mergedResult["avalista.cpfCnpj"] = "";
+
+        // Puxa Nome, Telefone e Email do Avaliação (ownerFields) para o Avalista
+        if (ownerFields["proprietario.nome"]) mergedResult["avalista.nome"] = ownerFields["proprietario.nome"];
+        if (ownerFields["proprietario.telefone"]) mergedResult["avalista.telefone"] = ownerFields["proprietario.telefone"];
+        if (ownerFields["proprietario.email"]) mergedResult["avalista.email"] = ownerFields["proprietario.email"];
+
+        // Os demais itens do Avalista replicam do Proprietário (buyerFields)
+        for (const [k, v] of Object.entries(mergedResult)) {
           if (k.startsWith("proprietario.") && v) {
-            merged[k.replace("proprietario.", "avalista.")] = v;
+            const field = k.replace("proprietario.", "");
+            if (!["nome", "telefone", "email", "cpfCnpj"].includes(field)) {
+              mergedResult[`avalista.${field}`] = v;
+            }
           }
+        }
       } else {
-        // Same person (or only one source): preserve previous behavior
+        // Sem divergência: preferimos os dados da Avaliação; e os faltantes pegamos do Pedido
         for (const [k, v] of Object.entries(ownerFields))
-          if (k.startsWith("proprietario.") && v) merged[k] = v;
+          if (k.startsWith("proprietario.") && v) mergedResult[k] = v;
         for (const [k, v] of Object.entries(buyerFields))
-          if (k.startsWith("proprietario.") && v) merged[k] = v;
+          if (k.startsWith("proprietario.") && v && !mergedResult[k]) mergedResult[k] = v;
       }
 
+      // Preenchimento Automático do COAF refletindo o Proprietário
+      if (mergedResult["proprietario.nome"]) mergedResult["coaf.nomeRazaoSocial"] = mergedResult["proprietario.nome"];
+      if (mergedResult["proprietario.cpfCnpj"]) mergedResult["coaf.cpfCnpj"] = mergedResult["proprietario.cpfCnpj"];
+
       const result: ExtractionResult = {
-        fields: merged,
+        fields: mergedResult,
         requiresAvalista,
         ownerName,
         buyerName,
@@ -183,8 +213,9 @@ const PdfUploader = ({ onDataExtracted }: Props) => {
               </div>
             ))}
             <Button onClick={extractData} disabled={loading} className="w-full">
-              {loading ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
-              {loading ? "Extraindo dados..." : `Extrair Dados de ${files.length} arquivo(s)`}
+              <Loader2 className={`h-4 w-4 animate-spin mr-2 ${loading ? "inline-block" : "hidden"}`} />
+              <span className={loading ? "hidden" : "inline-block"}>Extrair Dados de {files.length} arquivo(s)</span>
+              <span className={loading ? "inline-block" : "hidden"}>Extraindo dados...</span>
             </Button>
           </div>
         )}

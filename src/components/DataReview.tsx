@@ -1,10 +1,11 @@
-import { FormData, DocumentType, documentLabels } from "@/types/document";
+import { DocumentType, documentLabels } from "@/types/document";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Eye } from "lucide-react";
+import { useFormContext, useWatch } from "react-hook-form";
+import { FormData } from "@/types/document";
 
 interface Props {
-  data: FormData;
   selectedDocs: DocumentType[];
 }
 
@@ -26,7 +27,13 @@ const Section = ({ title, items }: { title: string; items: [string, string | und
   );
 };
 
-const DataReview = ({ data, selectedDocs }: Props) => {
+const DataReview = ({ selectedDocs }: Props) => {
+  const { control, getValues } = useFormContext<FormData>();
+  const watchedData = useWatch({ control });
+  
+  // ensure we have a fallback structure representing FormData
+  const data = (watchedData as unknown as FormData) || getValues();
+
   return (
     <Card>
       <CardHeader>
@@ -47,23 +54,25 @@ const DataReview = ({ data, selectedDocs }: Props) => {
             ["Ano Fab.", data.veiculo.anoFabricacao],
             ["Ano Mod.", data.veiculo.anoModelo],
             ["Cor", data.veiculo.cor],
-            ["KM", data.veiculo.km],
+            ["Quilometragem", data.veiculo.km],
             ["Valor Avaliação", data.veiculo.valorAvaliacao],
           ]}
         />
-        <Section
-          title="Veículo Novo (BYD)"
-          items={[
-            ["Marca", data.veiculoNovo.marca],
-            ["Modelo", data.veiculoNovo.modelo],
-            ["Chassi", data.veiculoNovo.chassi],
-            ["Cor", data.veiculoNovo.cor],
-            ["Ano Fab.", data.veiculoNovo.anoFabricacao],
-            ["Ano Mod.", data.veiculoNovo.anoModelo],
-            ["Valor Venda", data.veiculoNovo.valorVenda],
-            ["Nº Nota Fiscal", data.veiculoNovo.numeroNotaFiscal],
-          ]}
-        />
+        {data.veiculoNovo && (
+          <Section
+            title="Veículo Novo (BYD)"
+            items={[
+              ["Marca", data.veiculoNovo.marca],
+              ["Modelo", data.veiculoNovo.modelo],
+              ["Chassi", data.veiculoNovo.chassi],
+              ["Cor", data.veiculoNovo.cor],
+              ["Ano Fab.", data.veiculoNovo.anoFabricacao],
+              ["Ano Mod.", data.veiculoNovo.anoModelo],
+              ["Valor Venda", data.veiculoNovo.valorVenda],
+              ["Nº Nota Fiscal", data.veiculoNovo.numeroNotaFiscal],
+            ]}
+          />
+        )}
         <Section
           title="Proprietário / Outorgante"
           items={[

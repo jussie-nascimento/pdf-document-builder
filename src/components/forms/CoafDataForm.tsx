@@ -120,7 +120,7 @@ const CoafDataForm = ({ form }: Props) => {
               type="button"
               variant="outline"
               size="sm"
-              onClick={() => append({ nome: "", cpf: "", percentualCapital: "", poderes: "", pep: false, beneficiarioFinal: false })}
+              onClick={() => append({ nome: "", cpf: "", poderesAdm: "", percentualCapital: "", poderes: "", pep: false, funcaoPep: "", beneficiarioFinal: "" })}
             >
               <Plus className="h-4 w-4 mr-1" /> Adicionar
             </Button>
@@ -135,30 +135,31 @@ const CoafDataForm = ({ form }: Props) => {
               </div>
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
                 <FormField control={form.control} name={`coaf.membros.${index}.nome`} render={({ field }) => (
-                  <FormItem><FormLabel>Nome</FormLabel><FormControl><Input {...field} value={field.value ?? ""} /></FormControl></FormItem>
+                  <FormItem><FormLabel>Nome / Razão Social</FormLabel><FormControl><Input {...field} value={field.value ?? ""} /></FormControl></FormItem>
                 )} />
                 <FormField control={form.control} name={`coaf.membros.${index}.cpf`} render={({ field }) => (
-                  <FormItem><FormLabel>CPF</FormLabel><FormControl><Input {...field} value={field.value ?? ""} /></FormControl></FormItem>
+                  <FormItem><FormLabel>CPF / CNPJ</FormLabel><FormControl><Input {...field} value={field.value ?? ""} /></FormControl></FormItem>
+                )} />
+                <FormField control={form.control} name={`coaf.membros.${index}.poderesAdm`} render={({ field }) => (
+                  <FormItem><FormLabel>Poderes ADM (S/N)</FormLabel><FormControl><Input {...field} value={field.value ?? ""} /></FormControl></FormItem>
                 )} />
                 <FormField control={form.control} name={`coaf.membros.${index}.percentualCapital`} render={({ field }) => (
                   <FormItem><FormLabel>% Capital</FormLabel><FormControl><Input {...field} value={field.value ?? ""} /></FormControl></FormItem>
                 )} />
                 <FormField control={form.control} name={`coaf.membros.${index}.poderes`} render={({ field }) => (
-                  <FormItem><FormLabel>Poderes</FormLabel><FormControl><Input {...field} value={field.value ?? ""} /></FormControl></FormItem>
+                  <FormItem><FormLabel>S/C *</FormLabel><FormControl><Input {...field} value={field.value ?? ""} /></FormControl></FormItem>
                 )} />
-              </div>
-              <div className="flex gap-6">
                 <FormField control={form.control} name={`coaf.membros.${index}.pep`} render={({ field }) => (
-                  <FormItem className="flex items-center gap-2">
+                  <FormItem className="flex items-center gap-2 mt-8">
                     <FormControl><Checkbox checked={field.value} onCheckedChange={field.onChange} /></FormControl>
-                    <FormLabel className="!mt-0">PEP</FormLabel>
+                    <FormLabel className="!mt-0">PEP **</FormLabel>
                   </FormItem>
+                )} />
+                <FormField control={form.control} name={`coaf.membros.${index}.funcaoPep`} render={({ field }) => (
+                  <FormItem><FormLabel>Função PEP</FormLabel><FormControl><Input {...field} value={field.value ?? ""} /></FormControl></FormItem>
                 )} />
                 <FormField control={form.control} name={`coaf.membros.${index}.beneficiarioFinal`} render={({ field }) => (
-                  <FormItem className="flex items-center gap-2">
-                    <FormControl><Checkbox checked={field.value} onCheckedChange={field.onChange} /></FormControl>
-                    <FormLabel className="!mt-0">Beneficiário Final</FormLabel>
-                  </FormItem>
+                  <FormItem><FormLabel>Beneficiário Final ***</FormLabel><FormControl><Input {...field} value={field.value ?? ""} /></FormControl></FormItem>
                 )} />
               </div>
             </div>
