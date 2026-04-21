@@ -10,12 +10,18 @@ type DocKind = "veiculo" | "pedido_vendas" | "nota_fiscal_byd" | "outro";
 
 function detectDocKind(text: string): DocKind {
   const t = text.toUpperCase();
+
+  // DANFE is absolute priority
   if (
-    t.includes("BYD") &&
-    (t.includes("DANFE") || t.includes("NOTA FISCAL") || t.includes("NF-E") || t.includes("NFE"))
+    t.includes("DANFE") ||
+    t.includes("DOCUMENTO AUXILIAR DA NOTA FISCAL") ||
+    t.includes("CHAVE DE ACESSO") ||
+    t.includes("NATUREZA DA OPERA") ||
+    t.includes("PROTOCOLO DE AUTORIZA")
   ) {
     return "nota_fiscal_byd";
   }
+
   if (
     t.includes("PEDIDO DE VENDAS DIRETAS") ||
     t.includes("PEDIDO DE VENDA DIRETA") ||
@@ -23,6 +29,13 @@ function detectDocKind(text: string): DocKind {
     t.includes("PEDIDO DE VENDA")
   ) {
     return "pedido_vendas";
+  }
+
+  if (
+    t.includes("BYD") &&
+    (t.includes("NOTA FISCAL") || t.includes("NF-E") || t.includes("NFE"))
+  ) {
+    return "nota_fiscal_byd";
   }
   if (
     t.includes("CRLV") ||
@@ -73,10 +86,14 @@ function extractBydInvoice(rawText: string): Record<string, string> {
     ]);
   if (chassi) fields["veiculoNovo.chassi"] = chassi.toUpperCase();
 
-  // MODELO — look for BYD followed by model words (DOLPHIN, SONG PLUS, YUAN PLUS, KING, SEAL, HAN, TAN, etc.)
-  // Try product description block first.
+  // MODELO — look for BYD followed by model words (DOLPHIN, SONG PLUS, YUAN PLUS, KING, SEAL, HAN, TAN, etc.) or MINI DOLPHIN
   const modelo = firstMatch(text, [
-    /\bBYD[\s\-]*([A-Z0-9][A-Z0-9\s\-\.\/]{2,40}?)(?=\s+(?:COR|CHASSI|ANO|\d{17}|R\$|PRETO|BRANCO|PRATA|AZUL|VERMELHO|CINZA|VERDE)|$)/im,
+    // Matches explicit BYD models directly avoiding any headers
+    /\b((?:DOLPHIN|SONG|YUAN|KING|SEAL|HAN|TAN|BYD)[\sA-Z0-9\-\.\/]{0,30}?)(?=\s+(?:PRETA|PRETO|BRANCA|BRANCO|PRATA|AZUL|VERMELHA|VERMELHO|CINZA|VERDE|AMARELA|AMARELO|MARROM|BEGE|DOURADA|DOURADO|COR\b))/i,
+    // Skips standard DANFE table headers and product codes
+    /Al\.?\s*IPI\s+(?:[A-Z0-9\-]{5,15})\s+([A-Z0-9\s\-\.\/]{3,50}?)(?=\s+(?:PRETA|PRETO|BRANCA|BRANCO|PRATA|AZUL|VERMELHA|VERMELHO|CINZA|VERDE|AMARELA|AMARELO|MARROM|BEGE|DOURADA|DOURADO|COR\b))/i,
+    // Original fallback with constraints
+    /DESCRI[ÇC][ÃA]O\s+DO(?:S)?\s+PRODUTO(?:S)?\/SERVI[ÇC]O(?:S)?[\s\S]{0,250}?(?:AL[ÍI]QUOTAS?)?[\s\S]{0,100}?\b([A-Z0-9\s\-\.\/]{5,100}?)(?=\s+(?:PRETA|PRETO|BRANCA|BRANCO|PRATA|AZUL|VERMELHA|VERMELHO|CINZA|VERDE|AMARELA|AMARELO|MARROM|BEGE|DOURADA|DOURADO|COR\b))/i,
     /MODELO[\s:]*([A-Z0-9][A-Z0-9\s\-\.\/]{2,40})/i,
     /DESCRI[ÇC][ÃA]O[\s\S]{0,80}?(BYD\s+[A-Z0-9][A-Z0-9\s\-\.\/]{2,40})/i,
   ]);
@@ -104,8 +121,15 @@ function extractBydInvoice(rawText: string): Record<string, string> {
     if (mod) fields["veiculoNovo.anoModelo"] = mod;
   }
 
-  // VALOR — prefer "VALOR TOTAL DA NOTA"
+  // VALOR — prefer "VALOR TOTAL DA NOTA" ou "VALOR TOTAL DA NF"
+  // Permite pular "0,00" de outras colunas exigindo pelo menos 1.000,00 (+4 dígitos ou separador de milhar)
   const valor = firstMatch(text, [
+    /VALOR\s+TOTAL\s+DA\s+NF(?:(?!\bVALOR\b)[\s\S]){0,100}?(?:R\$)?\s*([\d]{1,3}(?:[\.\,]\d{3})+[\.\,]\d{2}|[\d]{4,}[\.\,]\d{2})/i,
+    /VALOR\s+TOTAL\s+DA\s+NOTA(?:(?!\bVALOR\b)[\s\S]){0,100}?(?:R\$)?\s*([\d]{1,3}(?:[\.\,]\d{3})+[\.\,]\d{2}|[\d]{4,}[\.\,]\d{2})/i,
+    /VALOR\s+TOTAL\s+DOS?\s+PRODUTOS?(?:(?!\bVALOR\b)[\s\S]){0,100}?(?:R\$)?\s*([\d]{1,3}(?:[\.\,]\d{3})+[\.\,]\d{2}|[\d]{4,}[\.\,]\d{2})/i,
+    /V\.?\s*TOTAL\s+DA\s+NOTA(?:(?!\bVALOR\b)[\s\S]){0,100}?(?:R\$)?\s*([\d]{1,3}(?:[\.\,]\d{3})+[\.\,]\d{2}|[\d]{4,}[\.\,]\d{2})/i,
+    // fallback
+    /VALOR\s+TOTAL\s+DA\s+NF[\s:]*R?\$?\s*([\d\.\,]+)/i,
     /VALOR\s+TOTAL\s+DA\s+NOTA[\s:]*R?\$?\s*([\d\.\,]+)/i,
     /VALOR\s+TOTAL\s+DOS?\s+PRODUTOS?[\s:]*R?\$?\s*([\d\.\,]+)/i,
     /V\.?\s*TOTAL\s+DA\s+NOTA[\s:]*R?\$?\s*([\d\.\,]+)/i,
@@ -116,6 +140,7 @@ function extractBydInvoice(rawText: string): Record<string, string> {
   const numero = firstMatch(text, [
     /N[ºo°]\.?\s*(\d{3}\.?\d{3}\.?\d{3})/i,
     /N[ºo°]\s*[:\-]?\s*(\d{6,9})\b/,
+    /(?:N\.|N\s+)\s*(0*\d{5,9})/i,
     /NF[\-\s]*e?\s*N[ºo°]?[:\s]*(\d{4,9})/i,
   ]);
   if (numero) fields["veiculoNovo.numeroNotaFiscal"] = numero;
@@ -129,35 +154,111 @@ function extractGeneric(rawText: string): Record<string, string> {
   const fields: Record<string, string> = {};
 
   const patterns: Array<[string, RegExp[]]> = [
-    ["proprietario.nome", [/(?:nome|NOME|Nome)[:\s]+([A-ZÀ-Ú][A-ZÀ-Ú\s]{4,}?)(?=\n|CPF|CNPJ|RG)/]],
+    ["proprietario.nome", [
+      /Nome do cliente\s+(.+?)\s+(?:Telefone|Pa[íi]s|CPF\/CNPJ|E-mail|CEP|Endere[çc]o)/i,
+      /(?:nome\/raz[ãa]o social|comprador|cliente|adquirente|nome|NOME|Nome)[:\s]+([A-ZÀ-Úa-zà-ú]+(?:\s+[A-ZÀ-Úa-zà-ú]+){1,7})/i
+    ]],
     [
       "proprietario.cpfCnpj",
       [
-        /(?:CPF|CNPJ)[\/:\s]*(\d{2,3}\.?\d{3}\.?\d{3}[\/\.]?\d{0,4}\-?\d{2})/i,
+        /CPF\/CNPJ\s+([\d\.\-\/]+)(?:\s+E-Mail|\s+CEP|\s+Cidade|\s+$)/i,
+        /(?:CPF|CNPJ|cpf|cnpj)[\/:\s]*(\d{2,3}\.?\d{3}\.?\d{3}[\/\.]?\d{0,4}\-?\d{2})/i,
         /\b(\d{3}\.\d{3}\.\d{3}\-\d{2})\b/,
         /\b(\d{2}\.\d{3}\.\d{3}\/\d{4}\-\d{2})\b/,
       ],
     ],
-    ["proprietario.rg", [/(?:RG|R\.G\.)[:\s]+([0-9]{1,3}[\.\-\/0-9]{4,15})/i]],
-    ["proprietario.endereco", [/(?:endere[çc]o|ENDERE[ÇC]O)[:\s]+(.{8,80}?)(?=\n|CEP|BAIRRO)/i]],
-    ["proprietario.cidade", [/(?:cidade|munic[íi]pio)[:\s]+([A-ZÀ-Úa-zà-ú\s]{3,30}?)(?=\n|\/|UF|ESTADO)/i]],
-    ["proprietario.estado", [/(?:UF|estado)[:\s]+([A-Z]{2})\b/i]],
-    ["proprietario.cep", [/CEP[:\s]+(\d{5}\-?\d{3})/i]],
+    ["proprietario.endereco", [/(?:endere[çc]o|logradouro|ENDERE[ÇC]O)[:\s]+(.{8,80}?)(?=\n|CEP|BAIRRO|N[ºO°]|NUMERO|NÚMERO|NO\.)/i]],
+    ["proprietario.bairro", [/(?:bairro|BAIRRO)[:\s]+([A-ZÀ-Úa-zà-ú\s]{3,30}?)(?=\n|CEP|CIDADE|MUNIC[ÍI]PIO|UF|ESTADO)/i]],
+    ["proprietario.cidade", [
+      /Cidade\s+([A-ZÀ-Úa-zà-ú\s]{3,30}?)\s+Endere[çc]o/i,
+      /(?:cidade|munic[íi]pio)[:\s]+([A-ZÀ-Úa-zà-ú\s]{3,30}?)(?=\n|\/|UF|ESTADO)/i
+    ]],
+    ["proprietario.estado", [
+      /Estado\s+([A-ZÀ-Úa-zà-ú\s]{2,30}?)\s+(?:CPF\/CNPJ|Pa[íi]s)/i,
+      /(?:UF|estado|uf|ESTADO)[:\s]+([A-Z]{2})\b/i
+    ]],
+    ["proprietario.cep", [
+      /CEP\s+(\d{5}\-?\d{3})/i,
+      /CEP[:\s]+(\d{5}\-?\d{3})/i
+    ]],
+    ["proprietario.telefone", [
+      /Telefone\s+([+0-9\-\(\)\s]+?)\s+(?:Pa[íi]s|Estado|CPF)/i,
+      /(?:telefone|celular|fone)[:\s]+([\(\s]?\d{2}[\)\s]?\s*\d{4,5}[\-\s]?\d{4})/i
+    ]],
+    ["proprietario.email", [
+      /E-Mail\s+([a-zA-Z0-9._%+\-]+@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,})/i,
+      /(?:e[\-\s]?mail|E[\-\s]?MAIL)[:\s]+([a-zA-Z0-9._%+\-]+@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,})/i
+    ]],
     ["veiculo.placa", [/(?:placa|PLACA)[:\s]+([A-Z]{3}[\-\s]?\d[A-Z0-9]\d{2})/i]],
-    ["veiculo.marca", [/(?:marca|MARCA)[:\s]+([A-ZÀ-Ú][A-ZÀ-Ú\s\/\-]{1,20}?)(?=\n|MODELO)/i]],
-    ["veiculo.modelo", [/(?:modelo|MODELO)[:\s]+([A-Z0-9][A-Z0-9\s\.\-\/]{2,40}?)(?=\n|CHASSI|ANO)/i]],
+    ["veiculo.marca", [/(?:marca|MARCA)[:\s]+([A-ZÀ-Ú][A-ZÀ-Ú\s\/\-]{1,20}?)(?=\n|MODELO|ANO|PLACA)/i]],
+    ["veiculo.modelo", [
+      /\b(?:modelo|MODELO)[:\s]+([A-Z0-9][A-Z0-9\s\.\-\/]{1,50}?)(?=$|[\n\r]|\s{2,}|CHASSI|ANO|PLACA|COR|MARCA|VALOR|KM|QUILO|VERS[AÃ]O|RENAVAM|DATA|M[ÊE]S)/i,
+      /\b(?:ve[íi]culo avaliado|ve[íi]culo da troca|marca\/modelo|autom[oó]vel|descri[çc][ãa]o)[:\s]+([A-Z0-9][A-Z0-9\s\.\-\/]{1,50}?)(?=$|[\n\r]|\s{2,}|CHASSI|ANO|PLACA|COR|MARCA|VALOR|KM|QUILO|VERS[AÃ]O|RENAVAM|DATA|M[ÊE]S)/i,
+      /\b(?:ve[íi]culo|VE[ÍI]CULO)[:\s]+([A-Z0-9][A-Z0-9\s\.\-\/]{1,50}?)(?=$|[\n\r]|\s{2,}|CHASSI|ANO|PLACA|COR|MARCA|VALOR|KM|QUILO|VERS[AÃ]O|RENAVAM|DATA|M[ÊE]S)/i,
+    ]],
     ["veiculo.chassi", [/(?:chassi|CHASSI)[:\s]+([A-HJ-NPR-Z0-9]{17})/i]],
     ["veiculo.renavam", [/(?:renavam|RENAVAM)[:\s]+(\d{9,11})/i]],
     ["veiculo.cor", [/(?:cor|COR)[:\s]+([A-ZÀ-Úa-zà-ú]{3,20})/i]],
-    ["veiculo.anoFabricacao", [/ANO[\s\/]*FAB(?:RICA[ÇC][ÃA]O)?[:\s]*(\d{4})/i]],
-    ["veiculo.anoModelo", [/ANO[\s\/]*MOD(?:ELO)?[:\s]*(\d{4})/i]],
-    ["veiculo.km", [/(?:km|quilometragem|KM)[:\s]+([\d\.]{1,10})/i]],
+    ["veiculo.anoFabricacao", [/ANO[\s\/]*FAB(?:RICA[ÇC][ÃA]O)?[\s:]*(\d{4})/i]],
+    ["veiculo.anoModelo", [/ANO[\s\/]*MOD(?:ELO)?[\s:]*(\d{4})/i]],
+    ["veiculo.km", [/(?:km|quilometragem|quilo|QUILO|KM)[:\s]+([\d\.\,]{1,10})/i]],
+    ["veiculo.valorAvaliacao", [/(?:valor da avalia[çc][ãa]o|avalia[çc][ãa]o|valor estimado|valor)[:\s.]*(?:R\$)?\s*([\d]{1,3}(?:[\.\,]\d{3})*[\.\,]\d{2})/i, /R\$\s*([\d]{1,3}(?:[\.\,]\d{3})*[\.\,]\d{2})/i]],
   ];
 
   for (const [name, regexes] of patterns) {
     const v = firstMatch(text, regexes);
-    if (v) fields[name] = v;
+    if (v) fields[name] = v.replace(/\n/g, " ").trim();
   }
+
+  // Address split logic "R INACIO FELISBERTO MAGNUS,111,QUADRAD01 LOTE 6,CENTENARIO,Torres-Rio Grande do Sul,95560-000"
+  const enderecoCompletoMatch = text.match(/Endere[çc]o completo\s+([\s\S]+?)(?=\s+Classifica[çc][ãa]o|\s+INFORMA[ÇC][ÕO]ES)/i);
+  if (enderecoCompletoMatch && enderecoCompletoMatch[1]) {
+    const fullAddress = enderecoCompletoMatch[1].replace(/\n/g, " ").trim();
+    // Logic: up to 3rd comma is Address. between 3rd and 4th is Bairro. 4th to hyphen is Cidade. hyphen to 5th comma is Estado.
+    const parts = fullAddress.split(",");
+    if (parts.length >= 4) {
+      const enderecoParts = parts.slice(0, 3).join(",").trim();
+      if (!fields["proprietario.endereco"]) fields["proprietario.endereco"] = enderecoParts;
+
+      const bairroPart = parts[3].trim();
+      if (!fields["proprietario.bairro"]) fields["proprietario.bairro"] = bairroPart;
+
+      const restPart = parts.slice(4).join(","); // "Torres-Rio Grande do Sul,95560-000"
+      const dashIndex = restPart.indexOf("-");
+      if (dashIndex !== -1) {
+        const cidade = restPart.substring(0, dashIndex).trim();
+        if (!fields["proprietario.cidade"]) fields["proprietario.cidade"] = cidade;
+
+        const afterDash = restPart.substring(dashIndex + 1); // "Rio Grande do Sul,95560-000"
+        const nextCommaIndex = afterDash.indexOf(",");
+        if (nextCommaIndex !== -1) {
+          const estado = afterDash.substring(0, nextCommaIndex).trim();
+          if (!fields["proprietario.estado"]) fields["proprietario.estado"] = estado;
+        }
+      }
+    } else {
+      // Fallback to storing everything in endereco
+      if (!fields["proprietario.endereco"]) fields["proprietario.endereco"] = fullAddress;
+    }
+  }
+
+  // Fallback para Ano na forma: "Ano: 2018/2019" ou "2018 / 2019"
+  if (!fields["veiculo.anoFabricacao"] || !fields["veiculo.anoModelo"]) {
+    const anoMatch = text.match(/(?:ano|ANO|Ano)[\s\w:]*(\d{4})\s*[\/\-]\s*(\d{4})/);
+    if (anoMatch) {
+      if (!fields["veiculo.anoFabricacao"]) fields["veiculo.anoFabricacao"] = anoMatch[1];
+      if (!fields["veiculo.anoModelo"]) fields["veiculo.anoModelo"] = anoMatch[2];
+    }
+  }
+
+  // Remove redundant explicit prefix captured incorrectly due to unpdf layout flattening
+  if (fields["proprietario.nome"]) {
+    fields["proprietario.nome"] = fields["proprietario.nome"]
+      .replace(/^Nome[:\-\s]+/i, "")
+      .replace(/\s+[eE][\s\-\:\.]*$/i, "")
+      .trim();
+  }
+
   return fields;
 }
 
@@ -208,7 +309,7 @@ serve(async (req) => {
     }
 
     return new Response(
-      JSON.stringify({ fields, documentKind: docKind, personName }),
+      JSON.stringify({ fields, documentKind: docKind, personName, rawText: text }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   } catch (error) {
