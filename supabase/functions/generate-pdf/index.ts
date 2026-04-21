@@ -473,7 +473,10 @@ serve(async (req) => {
     
     switch (type) {
       case "termo_responsabilidade":
-        pageContent = generateTermoResponsabilidade(data);
+        pageContent = generateTermoResponsabilidadeSimples(data);
+        break;
+      case "termo_responsabilidade_avalista":
+        pageContent = generateTermoResponsabilidadeAvalista(data);
         break;
       case "procuracao_usado":
         pageContent = generateProcuracaoUsado(data);
