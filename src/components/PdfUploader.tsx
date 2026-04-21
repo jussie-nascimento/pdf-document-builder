@@ -78,6 +78,9 @@ const PdfUploader = ({ onDataExtracted }: Props) => {
         } else if (kind === "pedido_vendas") {
           buyerFields = { ...buyerFields, ...fields };
           if (personName) buyerName = personName;
+        } else if (kind === "nota_fiscal_byd") {
+          // Always merge BYD invoice fields directly (veiculoNovo.*)
+          for (const [k, v] of Object.entries(fields)) if (v) merged[k] = v;
         } else {
           for (const [k, v] of Object.entries(fields)) if (v) merged[k] = v;
         }

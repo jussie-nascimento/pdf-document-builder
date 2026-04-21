@@ -5,6 +5,7 @@ import { FormData, formSchema, DocumentType } from "@/types/document";
 import StepperIndicator from "@/components/StepperIndicator";
 import PdfUploader, { ExtractionResult } from "@/components/PdfUploader";
 import VehicleDataForm from "@/components/forms/VehicleDataForm";
+import NewVehicleDataForm from "@/components/forms/NewVehicleDataForm";
 import PersonDataForm from "@/components/forms/PersonDataForm";
 import CoafDataForm from "@/components/forms/CoafDataForm";
 import DocumentSelector from "@/components/DocumentSelector";
