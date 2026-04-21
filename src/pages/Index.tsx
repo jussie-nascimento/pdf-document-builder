@@ -117,6 +117,7 @@ const Index = () => {
               <>
                 <PdfUploader onDataExtracted={handleExtractedData} />
                 <VehicleDataForm form={form} />
+                <NewVehicleDataForm form={form} />
                 <PersonDataForm form={form} prefix="proprietario" title="Proprietário / Outorgante" />
                 <PersonDataForm form={form} prefix="avalista" title="Avalista / Fiador" />
                 <CoafDataForm form={form} />

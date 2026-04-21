@@ -37,7 +37,7 @@ const DataReview = ({ data, selectedDocs }: Props) => {
       </CardHeader>
       <CardContent className="space-y-6">
         <Section
-          title="Veículo"
+          title="Veículo Usado (Troca)"
           items={[
             ["Placa", data.veiculo.placa],
             ["Marca", data.veiculo.marca],
@@ -49,7 +49,19 @@ const DataReview = ({ data, selectedDocs }: Props) => {
             ["Cor", data.veiculo.cor],
             ["KM", data.veiculo.km],
             ["Valor Avaliação", data.veiculo.valorAvaliacao],
-            ["Valor Venda", data.veiculo.valorVenda],
+          ]}
+        />
+        <Section
+          title="Veículo Novo (BYD)"
+          items={[
+            ["Marca", data.veiculoNovo.marca],
+            ["Modelo", data.veiculoNovo.modelo],
+            ["Chassi", data.veiculoNovo.chassi],
+            ["Cor", data.veiculoNovo.cor],
+            ["Ano Fab.", data.veiculoNovo.anoFabricacao],
+            ["Ano Mod.", data.veiculoNovo.anoModelo],
+            ["Valor Venda", data.veiculoNovo.valorVenda],
+            ["Nº Nota Fiscal", data.veiculoNovo.numeroNotaFiscal],
           ]}
         />
         <Section
