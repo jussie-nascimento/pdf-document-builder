@@ -3,7 +3,7 @@ import { useForm, FormProvider } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { FormData, formSchema, DocumentType } from "@/types/document";
 import StepperIndicator from "@/components/StepperIndicator";
-import PdfUploader from "@/components/PdfUploader";
+import PdfUploader, { ExtractionResult } from "@/components/PdfUploader";
 import VehicleDataForm from "@/components/forms/VehicleDataForm";
 import PersonDataForm from "@/components/forms/PersonDataForm";
 import CoafDataForm from "@/components/forms/CoafDataForm";
@@ -35,13 +35,24 @@ const Index = () => {
     },
   });
 
-  const handleExtractedData = (fields: Record<string, string>) => {
-    Object.entries(fields).forEach(([key, value]) => {
+  const handleExtractedData = (result: ExtractionResult) => {
+    Object.entries(result.fields).forEach(([key, value]) => {
       try {
         form.setValue(key as any, value);
       } catch {
         // field path not found, skip
       }
+    });
+
+    // Auto-select correct Termo de Responsabilidade variant
+    setSelectedDocs((prev) => {
+      const without = prev.filter(
+        (d) => d !== "termo_responsabilidade" && d !== "termo_responsabilidade_avalista"
+      );
+      const variant: DocumentType = result.requiresAvalista
+        ? "termo_responsabilidade_avalista"
+        : "termo_responsabilidade";
+      return [...without, variant];
     });
   };
 
