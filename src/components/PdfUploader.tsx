@@ -69,7 +69,12 @@ const PdfUploader = ({ onDataExtracted }: Props) => {
 
         if (error) throw error;
         const fields = (data?.fields ?? {}) as Record<string, string>;
-        const kind = data?.documentKind as "veiculo" | "pedido_vendas" | "outro" | undefined;
+        const kind = data?.documentKind as
+          | "veiculo"
+          | "pedido_vendas"
+          | "nota_fiscal_byd"
+          | "outro"
+          | undefined;
         const personName = data?.personName as string | undefined;
 
         if (kind === "veiculo") {
