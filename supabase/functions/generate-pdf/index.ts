@@ -260,6 +260,8 @@ function generateTermoResponsabilidadeSimples(d: FormDataInput): string {
 
   return c;
 }
+
+function generateProcuracaoUsado(d: FormDataInput): string {
   let c = "";
   let y = 790;
   
