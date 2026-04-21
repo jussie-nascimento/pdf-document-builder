@@ -96,7 +96,7 @@ interface FormDataInput {
   data?: string;
 }
 
-function generateTermoResponsabilidade(d: FormDataInput): string {
+function generateTermoResponsabilidadeAvalista(d: FormDataInput): string {
   let c = "";
   let y = 790;
   
@@ -186,6 +186,78 @@ function generateTermoResponsabilidade(d: FormDataInput): string {
   c += drawLine(320, y, 520, y);
   c += drawText(370, y - 12, "Avalista", 8);
   
+  return c;
+}
+
+function generateTermoResponsabilidadeSimples(d: FormDataInput): string {
+  let c = "";
+  let y = 790;
+
+  c += drawText(180, y, "TERMO DE RESPONSABILIDADE", 14, true);
+  y -= 30;
+  c += drawText(50, y, "IESA - TRINITA VEICULOS", 10, true);
+  y -= 25;
+
+  c += drawText(50, y, "DADOS DO VEICULO", 11, true);
+  y -= 18;
+  c += drawLine(50, y, 545, y);
+  y -= 15;
+
+  const vehicleFields = [
+    ["Placa", d.veiculo.placa || ""],
+    ["Marca", d.veiculo.marca || ""],
+    ["Modelo", d.veiculo.modelo || ""],
+    ["Chassi", d.veiculo.chassi || ""],
+    ["RENAVAM", d.veiculo.renavam || ""],
+    ["Ano Fab/Mod", `${d.veiculo.anoFabricacao || ""}/${d.veiculo.anoModelo || ""}`],
+    ["Cor", d.veiculo.cor || ""],
+    ["KM", d.veiculo.km || ""],
+  ];
+
+  for (const [label, value] of vehicleFields) {
+    c += drawText(50, y, `${label}: ${value}`, 9);
+    y -= 14;
+  }
+
+  y -= 10;
+  c += drawText(50, y, "DADOS DO PROPRIETARIO", 11, true);
+  y -= 18;
+  c += drawLine(50, y, 545, y);
+  y -= 15;
+
+  const ownerFields = [
+    ["Nome", d.proprietario.nome || ""],
+    ["CPF/CNPJ", d.proprietario.cpfCnpj || ""],
+    ["RG", d.proprietario.rg || ""],
+    ["Endereco", d.proprietario.endereco || ""],
+    ["Bairro", d.proprietario.bairro || ""],
+    ["Cidade/Estado", `${d.proprietario.cidade || ""} / ${d.proprietario.estado || ""}`],
+    ["CEP", d.proprietario.cep || ""],
+    ["Nacionalidade", d.proprietario.nacionalidade || ""],
+    ["Estado Civil", d.proprietario.estadoCivil || ""],
+  ];
+
+  for (const [label, value] of ownerFields) {
+    c += drawText(50, y, `${label}: ${value}`, 9);
+    y -= 14;
+  }
+
+  y -= 15;
+  c += drawText(50, y, `Valor de Avaliacao: R$ ${d.veiculo.valorAvaliacao || "___________"}`, 9);
+  y -= 30;
+
+  c += drawText(50, y, "Declaro que recebi o veiculo acima descrito em perfeitas condicoes de uso,", 8);
+  y -= 12;
+  c += drawText(50, y, "responsabilizando-me por quaisquer danos ou avarias que venham a ocorrer", 8);
+  y -= 12;
+  c += drawText(50, y, "durante o periodo em que o veiculo estiver sob minha responsabilidade.", 8);
+
+  y -= 40;
+  c += drawText(50, y, `Data: ${d.data || "____/____/________"}`, 9);
+  y -= 40;
+  c += drawLine(200, y, 400, y);
+  c += drawText(265, y - 12, "Proprietario", 8);
+
   return c;
 }
 
@@ -401,7 +473,10 @@ serve(async (req) => {
     
     switch (type) {
       case "termo_responsabilidade":
-        pageContent = generateTermoResponsabilidade(data);
+        pageContent = generateTermoResponsabilidadeSimples(data);
+        break;
+      case "termo_responsabilidade_avalista":
+        pageContent = generateTermoResponsabilidadeAvalista(data);
         break;
       case "procuracao_usado":
         pageContent = generateProcuracaoUsado(data);

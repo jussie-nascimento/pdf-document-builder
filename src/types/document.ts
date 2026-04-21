@@ -64,12 +64,14 @@ export type FormData = z.infer<typeof formSchema>;
 
 export type DocumentType =
   | "termo_responsabilidade"
+  | "termo_responsabilidade_avalista"
   | "procuracao_usado"
   | "procuracao_0km"
   | "coaf";
 
 export const documentLabels: Record<DocumentType, string> = {
-  termo_responsabilidade: "Termo de Responsabilidade (Avalista)",
+  termo_responsabilidade: "Termo de Responsabilidade (Simples)",
+  termo_responsabilidade_avalista: "Termo de Responsabilidade com Avalista",
   procuracao_usado: "Procuração Veículo Usado",
   procuracao_0km: "Procuração 0KM",
   coaf: "COAF - Autodeclaração",

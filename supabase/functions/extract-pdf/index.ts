@@ -5,6 +5,30 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
+type DocKind = "veiculo" | "pedido_vendas" | "outro";
+
+function detectDocKind(text: string): DocKind {
+  const t = text.toUpperCase();
+  if (
+    t.includes("PEDIDO DE VENDAS DIRETAS") ||
+    t.includes("PEDIDO DE VENDA DIRETA") ||
+    t.includes("VENDAS DIRETAS") ||
+    t.includes("PEDIDO DE VENDA")
+  ) {
+    return "pedido_vendas";
+  }
+  if (
+    t.includes("CRLV") ||
+    t.includes("CRV") ||
+    t.includes("CERTIFICADO DE REGISTRO") ||
+    t.includes("LICENCIAMENTO") ||
+    t.includes("RENAVAM")
+  ) {
+    return "veiculo";
+  }
+  return "outro";
+}
+
 serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response("ok", { headers: corsHeaders });
@@ -19,17 +43,12 @@ serve(async (req) => {
       });
     }
 
-    // Decode base64 to get raw PDF bytes
     const pdfBytes = Uint8Array.from(atob(pdf), (c) => c.charCodeAt(0));
-    
-    // Extract text from PDF using simple text extraction
-    // We'll look for text between stream/endstream and extract readable strings
     const text = new TextDecoder("latin1").decode(pdfBytes);
-    
-    // Try to extract meaningful fields from the text
+    const docKind = detectDocKind(text);
+
     const fields: Record<string, string> = {};
-    
-    // Common patterns in Brazilian vehicle documents
+
     const patterns: [string, RegExp][] = [
       ["proprietario.nome", /(?:nome|NOME|Nome)[:\s]*([A-ZÀ-Ú\s]+?)(?:\n|CPF|$)/i],
       ["proprietario.cpfCnpj", /(?:CPF|CNPJ)[/:\s]*(\d{2,3}[\.\s]?\d{3}[\.\s]?\d{3}[/\.\s]?\d{4}[\-\s]?\d{2}|\d{3}\.\d{3}\.\d{3}\-\d{2})/i],
@@ -55,9 +74,26 @@ serve(async (req) => {
       }
     }
 
-    return new Response(JSON.stringify({ fields }), {
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
-    });
+    // Extract a candidate person name based on the doc kind, used to compare
+    // owner-of-vehicle vs buyer-on-sales-order.
+    let personName = fields["proprietario.nome"] || "";
+    if (docKind === "pedido_vendas") {
+      const buyerMatch =
+        text.match(/(?:comprador|cliente|adquirente)[:\s]*([A-ZÀ-Ú][A-ZÀ-Ú\s]{4,})/i) ||
+        text.match(/(?:nome|NOME)[:\s]*([A-ZÀ-Ú][A-ZÀ-Ú\s]{4,})/);
+      if (buyerMatch && buyerMatch[1]) personName = buyerMatch[1].trim();
+    }
+
+    return new Response(
+      JSON.stringify({
+        fields,
+        documentKind: docKind,
+        personName,
+      }),
+      {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      }
+    );
   } catch (error) {
     console.error("Error extracting PDF:", error);
     return new Response(

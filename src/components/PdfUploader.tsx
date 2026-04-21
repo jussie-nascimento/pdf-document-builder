@@ -1,17 +1,30 @@
 import { useState, useCallback } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Upload, FileText, Loader2, X } from "lucide-react";
+import { Upload, FileText, Loader2, X, AlertCircle } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+
+export interface ExtractionResult {
+  fields: Record<string, string>;
+  /** true when proprietário do veículo difere do comprador no Pedido de Vendas */
+  requiresAvalista: boolean;
+  ownerName?: string;
+  buyerName?: string;
+}
 
 interface Props {
-  onDataExtracted: (data: Record<string, string>) => void;
+  onDataExtracted: (result: ExtractionResult) => void;
 }
+
+const normalize = (s: string) =>
+  s.toUpperCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/\s+/g, " ").trim();
 
 const PdfUploader = ({ onDataExtracted }: Props) => {
   const [files, setFiles] = useState<File[]>([]);
   const [loading, setLoading] = useState(false);
+  const [lastResult, setLastResult] = useState<ExtractionResult | null>(null);
   const { toast } = useToast();
 
   const addFiles = (newFiles: FileList | File[]) => {
@@ -38,7 +51,11 @@ const PdfUploader = ({ onDataExtracted }: Props) => {
     if (files.length === 0) return;
     setLoading(true);
     try {
-      const allFields: Record<string, string> = {};
+      const merged: Record<string, string> = {};
+      let ownerName: string | undefined; // CRLV
+      let buyerName: string | undefined; // Pedido de vendas
+      let ownerFields: Record<string, string> = {};
+      let buyerFields: Record<string, string> = {};
 
       for (const file of files) {
         const buffer = await file.arrayBuffer();
@@ -51,18 +68,63 @@ const PdfUploader = ({ onDataExtracted }: Props) => {
         });
 
         if (error) throw error;
-        if (data?.fields) {
-          // Merge: newer values overwrite only if non-empty
-          for (const [key, value] of Object.entries(data.fields)) {
-            if (value) allFields[key] = value as string;
-          }
+        const fields = (data?.fields ?? {}) as Record<string, string>;
+        const kind = data?.documentKind as "veiculo" | "pedido_vendas" | "outro" | undefined;
+        const personName = data?.personName as string | undefined;
+
+        if (kind === "veiculo") {
+          ownerFields = { ...ownerFields, ...fields };
+          if (personName) ownerName = personName;
+        } else if (kind === "pedido_vendas") {
+          buyerFields = { ...buyerFields, ...fields };
+          if (personName) buyerName = personName;
+        } else {
+          for (const [k, v] of Object.entries(fields)) if (v) merged[k] = v;
         }
       }
 
-      onDataExtracted(allFields);
+      // Compose merged according to detection
+      const sameName =
+        ownerName && buyerName ? normalize(ownerName) === normalize(buyerName) : true;
+      const requiresAvalista = !!ownerName && !!buyerName && !sameName;
+
+      // Vehicle data: prefer CRLV
+      for (const [k, v] of Object.entries(ownerFields))
+        if (k.startsWith("veiculo.") && v) merged[k] = v;
+      for (const [k, v] of Object.entries(buyerFields))
+        if (k.startsWith("veiculo.") && v && !merged[k]) merged[k] = v;
+
+      if (requiresAvalista) {
+        // Buyer (Pedido) -> proprietario (responsável principal)
+        for (const [k, v] of Object.entries(buyerFields))
+          if (k.startsWith("proprietario.") && v) merged[k] = v;
+        // Owner (CRLV) -> avalista
+        for (const [k, v] of Object.entries(ownerFields))
+          if (k.startsWith("proprietario.") && v) {
+            merged[k.replace("proprietario.", "avalista.")] = v;
+          }
+      } else {
+        // Same person (or only one source): preserve previous behavior
+        for (const [k, v] of Object.entries(ownerFields))
+          if (k.startsWith("proprietario.") && v) merged[k] = v;
+        for (const [k, v] of Object.entries(buyerFields))
+          if (k.startsWith("proprietario.") && v) merged[k] = v;
+      }
+
+      const result: ExtractionResult = {
+        fields: merged,
+        requiresAvalista,
+        ownerName,
+        buyerName,
+      };
+      setLastResult(result);
+      onDataExtracted(result);
+
       toast({
         title: "Dados extraídos com sucesso!",
-        description: `${files.length} arquivo(s) processado(s). Campos preenchidos automaticamente.`,
+        description: requiresAvalista
+          ? `Nomes divergentes detectados — usar Termo com Avalista.`
+          : `${files.length} arquivo(s) processado(s).`,
       });
     } catch (err) {
       console.error(err);
@@ -117,6 +179,17 @@ const PdfUploader = ({ onDataExtracted }: Props) => {
               {loading ? "Extraindo dados..." : `Extrair Dados de ${files.length} arquivo(s)`}
             </Button>
           </div>
+        )}
+
+        {lastResult?.requiresAvalista && (
+          <Alert className="mt-4">
+            <AlertCircle className="h-4 w-4" />
+            <AlertDescription>
+              <strong>Divergência de nomes detectada:</strong> proprietário do veículo
+              ({lastResult.ownerName}) é diferente do comprador ({lastResult.buyerName}).
+              O <em>Termo de Responsabilidade com Avalista</em> será selecionado automaticamente.
+            </AlertDescription>
+          </Alert>
         )}
       </CardContent>
     </Card>

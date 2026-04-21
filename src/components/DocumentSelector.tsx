@@ -11,6 +11,7 @@ interface Props {
 
 const allDocs: DocumentType[] = [
   "termo_responsabilidade",
+  "termo_responsabilidade_avalista",
   "procuracao_usado",
   "procuracao_0km",
   "coaf",
