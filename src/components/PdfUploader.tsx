@@ -69,7 +69,12 @@ const PdfUploader = ({ onDataExtracted }: Props) => {
 
         if (error) throw error;
         const fields = (data?.fields ?? {}) as Record<string, string>;
-        const kind = data?.documentKind as "veiculo" | "pedido_vendas" | "outro" | undefined;
+        const kind = data?.documentKind as
+          | "veiculo"
+          | "pedido_vendas"
+          | "nota_fiscal_byd"
+          | "outro"
+          | undefined;
         const personName = data?.personName as string | undefined;
 
         if (kind === "veiculo") {
@@ -78,6 +83,9 @@ const PdfUploader = ({ onDataExtracted }: Props) => {
         } else if (kind === "pedido_vendas") {
           buyerFields = { ...buyerFields, ...fields };
           if (personName) buyerName = personName;
+        } else if (kind === "nota_fiscal_byd") {
+          // Always merge BYD invoice fields directly (veiculoNovo.*)
+          for (const [k, v] of Object.entries(fields)) if (v) merged[k] = v;
         } else {
           for (const [k, v] of Object.entries(fields)) if (v) merged[k] = v;
         }

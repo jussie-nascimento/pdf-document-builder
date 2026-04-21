@@ -76,6 +76,7 @@ function drawLine(x1: number, y1: number, x2: number, y2: number): string {
 
 interface FormDataInput {
   veiculo: Record<string, string>;
+  veiculoNovo?: Record<string, string>;
   proprietario: Record<string, string>;
   avalista: Record<string, string>;
   coaf: {
@@ -364,11 +365,22 @@ function generateProcuracao0km(d: FormDataInput): string {
   c += drawText(50, y, "OUTORGADO: IESA - TRINITA VEICULOS LTDA", 10, true);
   
   y -= 25;
-  c += drawText(50, y, "VEICULO:", 10, true);
+  const vn = d.veiculoNovo || {};
+  c += drawText(50, y, "VEICULO NOVO (BYD):", 10, true);
   y -= 18;
-  c += drawText(50, y, `Marca/Modelo: ${d.veiculo.marca || ""} / ${d.veiculo.modelo || ""}`, 9);
+  c += drawText(50, y, `Marca/Modelo: ${vn.marca || "BYD"} / ${vn.modelo || ""}`, 9);
   y -= 14;
-  c += drawText(50, y, `Chassi: ${d.veiculo.chassi || ""}`, 9);
+  c += drawText(50, y, `Chassi: ${vn.chassi || ""}`, 9);
+  y -= 14;
+  c += drawText(50, y, `Cor: ${vn.cor || ""}`, 9);
+  y -= 14;
+  c += drawText(50, y, `Ano: ${vn.anoFabricacao || ""}/${vn.anoModelo || ""}`, 9);
+  y -= 14;
+  c += drawText(50, y, `Valor de Venda: R$ ${vn.valorVenda || "___________"}`, 9);
+  if (vn.numeroNotaFiscal) {
+    y -= 14;
+    c += drawText(50, y, `Nota Fiscal: ${vn.numeroNotaFiscal}`, 9);
+  }
   
   y -= 30;
   const bodyText = [

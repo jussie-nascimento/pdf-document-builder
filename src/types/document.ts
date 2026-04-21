@@ -14,6 +14,17 @@ export const vehicleSchema = z.object({
   valorVenda: z.string().optional(),
 });
 
+export const newVehicleSchema = z.object({
+  marca: z.string().default("BYD"),
+  modelo: z.string().optional(),
+  chassi: z.string().optional(),
+  cor: z.string().optional(),
+  anoFabricacao: z.string().optional(),
+  anoModelo: z.string().optional(),
+  valorVenda: z.string().optional(),
+  numeroNotaFiscal: z.string().optional(),
+});
+
 export const personSchema = z.object({
   nome: z.string().optional(),
   cpfCnpj: z.string().optional(),
@@ -50,6 +61,7 @@ export const coafSchema = z.object({
 
 export const formSchema = z.object({
   veiculo: vehicleSchema.default({}),
+  veiculoNovo: newVehicleSchema.default({ marca: "BYD" }),
   proprietario: personSchema.default({}),
   avalista: personSchema.default({}),
   coaf: coafSchema.default({ pep: "nao", csnu: "nao", membros: [] }),
@@ -57,6 +69,7 @@ export const formSchema = z.object({
 });
 
 export type VehicleData = z.infer<typeof vehicleSchema>;
+export type NewVehicleData = z.infer<typeof newVehicleSchema>;
 export type PersonData = z.infer<typeof personSchema>;
 export type CoafMember = z.infer<typeof coafMemberSchema>;
 export type CoafData = z.infer<typeof coafSchema>;

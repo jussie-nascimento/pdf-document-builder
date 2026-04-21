@@ -5,6 +5,7 @@ import { FormData, formSchema, DocumentType } from "@/types/document";
 import StepperIndicator from "@/components/StepperIndicator";
 import PdfUploader, { ExtractionResult } from "@/components/PdfUploader";
 import VehicleDataForm from "@/components/forms/VehicleDataForm";
+import NewVehicleDataForm from "@/components/forms/NewVehicleDataForm";
 import PersonDataForm from "@/components/forms/PersonDataForm";
 import CoafDataForm from "@/components/forms/CoafDataForm";
 import DocumentSelector from "@/components/DocumentSelector";
@@ -116,6 +117,7 @@ const Index = () => {
               <>
                 <PdfUploader onDataExtracted={handleExtractedData} />
                 <VehicleDataForm form={form} />
+                <NewVehicleDataForm form={form} />
                 <PersonDataForm form={form} prefix="proprietario" title="Proprietário / Outorgante" />
                 <PersonDataForm form={form} prefix="avalista" title="Avalista / Fiador" />
                 <CoafDataForm form={form} />
