@@ -3,32 +3,30 @@ import { FormData } from "@/types/document";
 import { FormField, FormItem, FormLabel, FormControl } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Car } from "lucide-react";
+import { Sparkles } from "lucide-react";
 
 interface Props {
   form: UseFormReturn<FormData>;
 }
 
-const VehicleDataForm = ({ form }: Props) => {
+const NewVehicleDataForm = ({ form }: Props) => {
   const fields = [
-    { name: "veiculo.placa" as const, label: "Placa" },
-    { name: "veiculo.marca" as const, label: "Marca" },
-    { name: "veiculo.modelo" as const, label: "Modelo" },
-    { name: "veiculo.chassi" as const, label: "Chassi" },
-    { name: "veiculo.renavam" as const, label: "RENAVAM" },
-    { name: "veiculo.anoFabricacao" as const, label: "Ano Fabricação" },
-    { name: "veiculo.anoModelo" as const, label: "Ano Modelo" },
-    { name: "veiculo.cor" as const, label: "Cor" },
-    { name: "veiculo.km" as const, label: "Quilometragem" },
-    { name: "veiculo.valorAvaliacao" as const, label: "Valor de Avaliação (R$)" },
+    { name: "veiculoNovo.marca" as const, label: "Marca" },
+    { name: "veiculoNovo.modelo" as const, label: "Modelo" },
+    { name: "veiculoNovo.chassi" as const, label: "Chassi" },
+    { name: "veiculoNovo.cor" as const, label: "Cor" },
+    { name: "veiculoNovo.anoFabricacao" as const, label: "Ano Fabricação" },
+    { name: "veiculoNovo.anoModelo" as const, label: "Ano Modelo" },
+    { name: "veiculoNovo.valorVenda" as const, label: "Valor de Venda (R$)" },
+    { name: "veiculoNovo.numeroNotaFiscal" as const, label: "Nº Nota Fiscal" },
   ];
 
   return (
     <Card>
       <CardHeader>
         <CardTitle className="flex items-center gap-2 text-lg">
-          <Car className="h-5 w-5" />
-          Dados do Veículo Usado (Troca)
+          <Sparkles className="h-5 w-5" />
+          Dados do Veículo Novo (BYD - Nota Fiscal)
         </CardTitle>
       </CardHeader>
       <CardContent>
@@ -54,4 +52,4 @@ const VehicleDataForm = ({ form }: Props) => {
   );
 };
 
-export default VehicleDataForm;
+export default NewVehicleDataForm;
