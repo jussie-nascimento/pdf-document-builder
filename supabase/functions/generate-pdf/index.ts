@@ -228,7 +228,7 @@ function generateTermoResponsabilidade(d, docType) {
 }
 
 function generateProcuracaoUsado(d) {
-  const p = d.proprietario || {};
+  const p = d.avalista?.nome ? d.avalista : (d.proprietario || {});
   const v = d.veiculo || {};
 
   return {
