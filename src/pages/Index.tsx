@@ -16,7 +16,7 @@ import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { Badge } from "@/components/ui/badge";
-import { ArrowLeft, ArrowRight, Download, Loader2, FileText, LogOut } from "lucide-react";
+import { ArrowLeft, ArrowRight, Download, Loader2, FileText, LogOut, ShieldCheck } from "lucide-react";
 
 const steps = ["Dados", "Revisão", "Documentos", "Download"];
 
@@ -198,6 +198,10 @@ const Index = () => {
           </p>
           <p className="text-xs text-muted-foreground mt-2 uppercase tracking-widest bg-gradient-to-r from-muted-foreground to-primary bg-clip-text text-transparent">
             Executivo de Vendas Diretas BYD IESA
+          </p>
+          <p className="text-[10px] text-muted-foreground/60 mt-4 flex items-center justify-center gap-1">
+            <ShieldCheck className="h-3 w-3" />
+            Em conformidade com a Lei Geral de Proteção de Dados (LGPD).
           </p>
         </div>
       </footer>

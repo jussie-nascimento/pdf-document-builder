@@ -104,6 +104,16 @@ const Login = () => {
           </CardFooter>
         </Card>
       </div>
+
+      <div className="absolute bottom-6 left-0 right-0 text-center z-10 animate-in fade-in duration-700 delay-300">
+        <p className="text-xs text-muted-foreground tracking-wide">
+          Desenvolvido por <span className="text-primary font-medium">Jussie Nascimento</span>
+        </p>
+        <p className="text-[10px] text-muted-foreground/60 mt-1.5 flex items-center justify-center gap-1">
+          <ShieldCheck className="h-3 w-3" />
+          Em conformidade com a Lei Geral de Proteção de Dados (LGPD).
+        </p>
+      </div>
     </div>
   );
 };
