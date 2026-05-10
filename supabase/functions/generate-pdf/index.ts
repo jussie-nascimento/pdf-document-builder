@@ -167,11 +167,17 @@ function generateCoaf(d) {
   };
 }
 
-function generateTermoResponsabilidade(d) {
-  const p = d.proprietario || {};
+function generateTermoResponsabilidade(d, docType) {
+  let p = d.proprietario || {};
   const v = d.veiculo || {};
-  const a = d.avalista || {};
-  const isAvalista = !!a.nome;
+  let a = d.avalista || {};
+  const isAvalista = docType === "termo_responsabilidade_avalista" || !!a.nome;
+  
+  if (docType === "termo_responsabilidade_avalista") {
+    const temp = p;
+    p = a;
+    a = temp;
+  }
   
   return {
     content: [
@@ -285,7 +291,7 @@ serve(async (req) => {
         break;
       case "termo_responsabilidade":
       case "termo_responsabilidade_avalista":
-        docDefinition = generateTermoResponsabilidade(data);
+        docDefinition = generateTermoResponsabilidade(data, docType);
         break;
       case "coaf":
         docDefinition = generateCoaf(data);
