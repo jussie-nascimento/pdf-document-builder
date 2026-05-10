@@ -129,10 +129,10 @@ const Index = () => {
           <form onSubmit={(e) => e.preventDefault()} className="space-y-6">
             <div className={step === 0 ? 'block' : 'hidden'}>
                 <PdfUploader onDataExtracted={handleExtractedData} />
-                <VehicleDataForm form={form} />
-                <NewVehicleDataForm form={form} />
                 <PersonDataForm form={form} prefix="proprietario" title="Comprador / Avalista" />
+                <NewVehicleDataForm form={form} />
                 <PersonDataForm form={form} prefix="avalista" title="Proprietário do Usado" />
+                <VehicleDataForm form={form} />
                 <CoafDataForm form={form} />
                 <div className="max-w-xs pt-4">
                   <Label htmlFor="data">Data do Documento</Label>
