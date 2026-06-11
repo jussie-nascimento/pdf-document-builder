@@ -292,7 +292,7 @@ function generateComprovanteResidenciaDetran(d) {
       {
         columns: [
           { text: "Eu ", width: 'auto', margin: [0, 0, 10, 0], bold: true },
-          { text: p.nome || "_________________________________________________________", width: '*', margin: [0, 0, 0, 5], border: [false, false, false, true] }
+          { text: p.nome || "_________________________________________________________", width: '*', margin: [0, 0, 0, 5] }
         ],
         margin: [0, 0, 0, 15]
       },
