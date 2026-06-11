@@ -15,6 +15,7 @@ const allDocs: DocumentType[] = [
   "procuracao_usado",
   "procuracao_0km",
   "coaf",
+  "comprovante_residencia_detran",
 ];
 
 const DocumentSelector = ({ selected, onChange }: Props) => {

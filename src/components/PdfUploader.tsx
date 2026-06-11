@@ -102,9 +102,17 @@ const PdfUploader = ({ onDataExtracted }: Props) => {
       }
 
       // Compose merged according to detection
-      const sameName =
-        ownerName && buyerName ? normalize(ownerName) === normalize(buyerName) : true;
-      const requiresAvalista = !!ownerName && !!buyerName && !sameName;
+      const ownerCpfCnpj = ownerFields["proprietario.cpfCnpj"]?.replace(/\D/g, "");
+      const buyerCpfCnpj = buyerFields["proprietario.cpfCnpj"]?.replace(/\D/g, "");
+
+      let requiresAvalista = false;
+      if (ownerCpfCnpj && buyerCpfCnpj) {
+        requiresAvalista = ownerCpfCnpj !== buyerCpfCnpj;
+      } else {
+        const sameName =
+          ownerName && buyerName ? normalize(ownerName) === normalize(buyerName) : true;
+        requiresAvalista = !!ownerName && !!buyerName && !sameName;
+      }
 
       const mergedResult: Record<string, string> = { ...ownerFields, ...merged };
 

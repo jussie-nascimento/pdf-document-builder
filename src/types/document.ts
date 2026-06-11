@@ -80,7 +80,8 @@ export type DocumentType =
   | "termo_responsabilidade_avalista"
   | "procuracao_usado"
   | "procuracao_0km"
-  | "coaf";
+  | "coaf"
+  | "comprovante_residencia_detran";
 
 export const documentLabels: Record<DocumentType, string> = {
   termo_responsabilidade: "Termo de Responsabilidade (Simples)",
@@ -88,4 +89,5 @@ export const documentLabels: Record<DocumentType, string> = {
   procuracao_usado: "Procuração Veículo Usado",
   procuracao_0km: "Procuração 0KM",
   coaf: "COAF - Autodeclaração",
+  comprovante_residencia_detran: "Comprovante de Residência DETRAN",
 };

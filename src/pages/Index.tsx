@@ -23,7 +23,7 @@ const steps = ["Dados", "Revisão", "Documentos", "Download"];
 const Index = () => {
   const [step, setStep] = useState(0);
   const [selectedDocs, setSelectedDocs] = useState<DocumentType[]>([
-    "procuracao_0km", "coaf", "termo_responsabilidade", "procuracao_usado"
+    "procuracao_0km", "coaf", "termo_responsabilidade", "procuracao_usado", "comprovante_residencia_detran"
   ]);
   const [generating, setGenerating] = useState(false);
   const { toast } = useToast();
