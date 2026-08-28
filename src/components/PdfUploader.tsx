@@ -157,6 +157,30 @@ const PdfUploader = ({ onDataExtracted }: Props) => {
       if (mergedResult["proprietario.nome"]) mergedResult["coaf.nomeRazaoSocial"] = mergedResult["proprietario.nome"];
       if (mergedResult["proprietario.cpfCnpj"]) mergedResult["coaf.cpfCnpj"] = mergedResult["proprietario.cpfCnpj"];
 
+      // Combinar os campos de endereço separados num único campo "endereco" de forma contínua
+      ["proprietario", "avalista"].forEach((prefix) => {
+        const parts = [];
+        if (mergedResult[`${prefix}.endereco`]) parts.push(mergedResult[`${prefix}.endereco`]);
+        if (mergedResult[`${prefix}.bairro`]) parts.push(mergedResult[`${prefix}.bairro`]);
+
+        const cityState = [];
+        if (mergedResult[`${prefix}.cidade`]) cityState.push(mergedResult[`${prefix}.cidade`]);
+        if (mergedResult[`${prefix}.estado`]) cityState.push(mergedResult[`${prefix}.estado`]);
+        if (cityState.length > 0) parts.push(cityState.join(" - "));
+
+        if (mergedResult[`${prefix}.cep`]) parts.push(`CEP: ${mergedResult[`${prefix}.cep`]}`);
+
+        if (parts.length > 0) {
+          mergedResult[`${prefix}.endereco`] = parts.join(", ");
+        }
+
+        // Limpar os campos individuais, pois eles não existem mais no schema ou form
+        delete mergedResult[`${prefix}.bairro`];
+        delete mergedResult[`${prefix}.cidade`];
+        delete mergedResult[`${prefix}.estado`];
+        delete mergedResult[`${prefix}.cep`];
+      });
+
       const result: ExtractionResult = {
         fields: mergedResult,
         requiresAvalista,

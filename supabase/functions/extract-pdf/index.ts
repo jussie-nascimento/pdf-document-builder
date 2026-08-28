@@ -214,32 +214,7 @@ function extractGeneric(rawText: string): Record<string, string> {
   const enderecoCompletoMatch = text.match(/Endere[çc]o completo\s+([\s\S]+?)(?=\s+Classifica[çc][ãa]o|\s+INFORMA[ÇC][ÕO]ES)/i);
   if (enderecoCompletoMatch && enderecoCompletoMatch[1]) {
     const fullAddress = enderecoCompletoMatch[1].replace(/\n/g, " ").trim();
-    // Logic: up to 3rd comma is Address. between 3rd and 4th is Bairro. 4th to hyphen is Cidade. hyphen to 5th comma is Estado.
-    const parts = fullAddress.split(",");
-    if (parts.length >= 4) {
-      const enderecoParts = parts.slice(0, 3).join(",").trim();
-      if (!fields["proprietario.endereco"]) fields["proprietario.endereco"] = enderecoParts;
-
-      const bairroPart = parts[3].trim();
-      if (!fields["proprietario.bairro"]) fields["proprietario.bairro"] = bairroPart;
-
-      const restPart = parts.slice(4).join(","); // "Torres-Rio Grande do Sul,95560-000"
-      const dashIndex = restPart.indexOf("-");
-      if (dashIndex !== -1) {
-        const cidade = restPart.substring(0, dashIndex).trim();
-        if (!fields["proprietario.cidade"]) fields["proprietario.cidade"] = cidade;
-
-        const afterDash = restPart.substring(dashIndex + 1); // "Rio Grande do Sul,95560-000"
-        const nextCommaIndex = afterDash.indexOf(",");
-        if (nextCommaIndex !== -1) {
-          const estado = afterDash.substring(0, nextCommaIndex).trim();
-          if (!fields["proprietario.estado"]) fields["proprietario.estado"] = estado;
-        }
-      }
-    } else {
-      // Fallback to storing everything in endereco
-      if (!fields["proprietario.endereco"]) fields["proprietario.endereco"] = fullAddress;
-    }
+    if (!fields["proprietario.endereco"]) fields["proprietario.endereco"] = fullAddress;
   }
 
   // Fallback para Ano na forma: "Ano: 2018/2019" ou "2018 / 2019"

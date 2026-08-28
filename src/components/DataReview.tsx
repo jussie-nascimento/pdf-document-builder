@@ -80,10 +80,6 @@ const DataReview = ({ selectedDocs }: Props) => {
             ["CPF/CNPJ", data.proprietario.cpfCnpj],
             ["RG", data.proprietario.rg],
             ["Endereço", data.proprietario.endereco],
-            ["Bairro", data.proprietario.bairro],
-            ["Cidade", data.proprietario.cidade],
-            ["Estado", data.proprietario.estado],
-            ["CEP", data.proprietario.cep],
             ["Nacionalidade", data.proprietario.nacionalidade],
             ["Estado Civil", data.proprietario.estadoCivil],
             ["Profissão", data.proprietario.profissao],
@@ -96,8 +92,6 @@ const DataReview = ({ selectedDocs }: Props) => {
             ["CPF/CNPJ", data.avalista.cpfCnpj],
             ["RG", data.avalista.rg],
             ["Endereço", data.avalista.endereco],
-            ["Cidade", data.avalista.cidade],
-            ["Estado", data.avalista.estado],
           ]}
         />
         {data.coaf.nomeRazaoSocial && (
