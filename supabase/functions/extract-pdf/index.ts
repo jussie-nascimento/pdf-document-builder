@@ -173,6 +173,15 @@ function extractNbsProposal(rawText: string): Record<string, string> {
   const text = normalizeSpaces(rawText);
   const fields: Record<string, string> = {};
 
+  // Separate sections to prevent header/concessionaire info from overriding client data
+  const veiculoIdx = text.search(/Ve[íi]culo:/i);
+  const clienteSection = veiculoIdx !== -1 ? text.slice(0, veiculoIdx) : text;
+  const veiculoSection = veiculoIdx !== -1 ? text.slice(veiculoIdx) : text;
+
+  // Isolate text after "Cliente:" for client-specific fields
+  const clienteOnlyIdx = clienteSection.search(/Cliente:/i);
+  const clienteOnlyText = clienteOnlyIdx !== -1 ? clienteSection.slice(clienteOnlyIdx) : clienteSection;
+
   // ── COMPRADOR (aba Cliente) ───────────────────────────────────────────────
 
   // Nome / Razão Social
@@ -249,8 +258,10 @@ function extractNbsProposal(rawText: string): Record<string, string> {
   const telefone = foneCel?.trim() || foneRes?.trim() || foneCom?.trim();
   if (telefone) fields["proprietario.telefone"] = telefone;
 
-  // E-mail
-  const email = firstMatch(text, [
+  // E-mail (procura especificamente na seção do Cliente)
+  const email = firstMatch(clienteOnlyText, [
+    /E-?mail[:\s]+([a-zA-Z0-9._%+\-]+@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,})/i,
+  ]) || firstMatch(clienteSection, [
     /E-?mail[:\s]+([a-zA-Z0-9._%+\-]+@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,})/i,
   ]);
   if (email) fields["proprietario.email"] = email.trim();
@@ -267,14 +278,18 @@ function extractNbsProposal(rawText: string): Record<string, string> {
   if (modelo) fields["veiculoNovo.modelo"] = modelo.replace(/\s+/g, " ").trim();
 
   // Chassi (17 chars alphanumeric)
-  const chassi = firstMatch(text, [
+  const chassi = firstMatch(veiculoSection, [
     /Chassi[:\s]+([A-Z0-9]{17})/i,
     /\b([A-Z0-9]{17})\b/,
+  ]) || firstMatch(text, [
+    /Chassi[:\s]+([A-Z0-9]{17})/i,
+    /\b(92V[A-Z0-9]{14})\b/i,
   ]);
   if (chassi) fields["veiculoNovo.chassi"] = chassi.toUpperCase();
 
-  // Cor (exterior — usa negative lookahead para não pegar "Cor Interna")
-  const cor = firstMatch(text, [
+  // Cor (exterior — busca especificamente "Cor:" com dois pontos para não pegar "Cor Interna:")
+  const cor = firstMatch(veiculoSection, [
+    /\bCor\s*:\s*([A-ZÀ-Úa-zà-ú]{3,20})/i,
     /\bCor(?!\s*Interna)[:\s]+([A-ZÀ-Úa-zà-ú]{3,20})/i,
   ]);
   if (cor) fields["veiculoNovo.cor"] = cor.trim();
