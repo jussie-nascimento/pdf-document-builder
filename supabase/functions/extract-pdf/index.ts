@@ -8,7 +8,7 @@ const corsHeaders = {
 
 type DocKind = "veiculo" | "pedido_vendas" | "nota_fiscal_byd" | "proposta_nbs" | "outro";
 
-function detectDocKind(text: string): DocKind {
+function detectDocKind(text: string, mode?: string): DocKind {
   const t = text.toUpperCase();
 
   // DANFE is absolute priority
@@ -22,16 +22,35 @@ function detectDocKind(text: string): DocKind {
     return "nota_fiscal_byd";
   }
 
-  // NBS Proposal — check before generic "PEDIDO DE VENDA" to avoid collision
+  // CRLV / Avaliação de Veículo Usado / Laudo de Troca
+  if (
+    t.includes("CRLV") ||
+    t.includes("CRV") ||
+    t.includes("CERTIFICADO DE REGISTRO") ||
+    t.includes("LICENCIAMENTO") ||
+    t.includes("LAUDO DE AVALIA") ||
+    t.includes("AVALIAÇÃO DE VEÍCULO") ||
+    t.includes("AVALIACAO DE VEICULO") ||
+    t.includes("VEÍCULO AVALIADO") ||
+    t.includes("VEICULO AVALIADO") ||
+    t.includes("VALOR DA AVALIA")
+  ) {
+    return "veiculo";
+  }
+
+  // NBS Proposal — check markers or fallback if mode === 'varejo_nbs'
   if (
     t.includes("PROPOSTA NBS") ||
+    t.includes("PROPOSTA DE VENDA") ||
     t.includes("COD. FINAME") ||
     t.includes("COD FINAME") ||
     t.includes("COR INTERNA") ||
+    (t.includes("CLIENTE:") && t.includes("VEICULO:")) ||
     (t.includes("N° MOTOR") && t.includes("RENAVAM")) ||
     (t.includes("PATIO") && t.includes("N° MOTOR")) ||
     (t.includes("PATÍO") && t.includes("RENAVAM")) ||
-    (t.includes("NCM") && t.includes("RENAVAM") && t.includes("COR INTERNA"))
+    (t.includes("NCM") && t.includes("COR INTERNA")) ||
+    mode === "varejo_nbs"
   ) {
     return "proposta_nbs";
   }
@@ -51,15 +70,7 @@ function detectDocKind(text: string): DocKind {
   ) {
     return "nota_fiscal_byd";
   }
-  if (
-    t.includes("CRLV") ||
-    t.includes("CRV") ||
-    t.includes("CERTIFICADO DE REGISTRO") ||
-    t.includes("LICENCIAMENTO") ||
-    t.includes("RENAVAM")
-  ) {
-    return "veiculo";
-  }
+
   return "outro";
 }
 
@@ -427,7 +438,7 @@ serve(async (req) => {
   }
 
   try {
-    const { pdf } = await req.json();
+    const { pdf, mode } = await req.json();
     if (!pdf || typeof pdf !== "string") {
       return new Response(JSON.stringify({ error: "PDF base64 is required" }), {
         status: 400,
@@ -437,7 +448,7 @@ serve(async (req) => {
 
     const pdfBytes = Uint8Array.from(atob(pdf), (c) => c.charCodeAt(0));
     const text = await pdfToText(pdfBytes);
-    const docKind = detectDocKind(text);
+    const docKind = detectDocKind(text, mode);
 
     console.log(`[extract-pdf] kind=${docKind}, length=${text.length}`);
 

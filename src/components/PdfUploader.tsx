@@ -9,7 +9,7 @@ import { Badge } from "@/components/ui/badge";
 
 export interface ExtractionResult {
   fields: Record<string, string>;
-  /** true when proprietário do veículo difere do comprador no Pedido de Vendas */
+  /** true when proprietário do veículo difere do comprador no Pedido de Vendas ou Proposta NBS */
   requiresAvalista: boolean;
   ownerName?: string;
   buyerName?: string;
@@ -53,7 +53,7 @@ const PdfUploader = ({ onDataExtracted, importMode, onImportModeChange }: Props)
     setFiles((prev) => prev.filter((_, i) => i !== index));
   };
 
-  // ─── Venda Direta extraction (original logic) ──────────────────────────────
+  // ─── Venda Direta extraction ──────────────────────────────────────────────
   const extractVendaDireta = async () => {
     if (files.length === 0) return;
     setLoading(true);
@@ -68,7 +68,7 @@ const PdfUploader = ({ onDataExtracted, importMode, onImportModeChange }: Props)
         const base64 = await fileToBase64(file);
 
         const { data, error } = await supabase.functions.invoke("extract-pdf", {
-          body: { pdf: base64 },
+          body: { pdf: base64, mode: "venda_direta" },
         });
 
         if (error) throw error;
@@ -78,13 +78,7 @@ const PdfUploader = ({ onDataExtracted, importMode, onImportModeChange }: Props)
         console.log("===================================");
 
         const fields = (data?.fields ?? {}) as Record<string, string>;
-        const kind = data?.documentKind as
-          | "veiculo"
-          | "pedido_vendas"
-          | "nota_fiscal_byd"
-          | "proposta_nbs"
-          | "outro"
-          | undefined;
+        const kind = data?.documentKind as string | undefined;
         const personName = data?.personName as string | undefined;
 
         if (kind === "veiculo") {
@@ -167,18 +161,21 @@ const PdfUploader = ({ onDataExtracted, importMode, onImportModeChange }: Props)
     }
   };
 
-  // ─── Varejo NBS extraction ─────────────────────────────────────────────────
+  // ─── Varejo NBS extraction (supports NBS Proposal + Used Vehicle Evaluation PDF) ─
   const extractVarejoNbs = async () => {
     if (files.length === 0) return;
     setLoading(true);
     try {
       let nbsFields: Record<string, string> = {};
+      let ownerFields: Record<string, string> = {};
+      let ownerName: string | undefined;
+      let buyerName: string | undefined;
 
       for (const file of files) {
         const base64 = await fileToBase64(file);
 
         const { data, error } = await supabase.functions.invoke("extract-pdf", {
-          body: { pdf: base64 },
+          body: { pdf: base64, mode: "varejo_nbs" },
         });
 
         if (error) throw error;
@@ -189,31 +186,73 @@ const PdfUploader = ({ onDataExtracted, importMode, onImportModeChange }: Props)
 
         const kind = data?.documentKind as string | undefined;
         const fields = (data?.fields ?? {}) as Record<string, string>;
+        const personName = data?.personName as string | undefined;
 
         if (kind === "proposta_nbs") {
-          // Merge NBS fields directly — buyer from Cliente tab, vehicle from Veículo tab
           for (const [k, v] of Object.entries(fields)) if (v) nbsFields[k] = v;
+          if (fields["proprietario.nome"]) buyerName = fields["proprietario.nome"];
+        } else if (kind === "veiculo") {
+          // PDF de Avaliação do Veículo Usado / CRLV
+          ownerFields = { ...ownerFields, ...fields };
+          if (personName) ownerName = personName;
         } else {
-          // If another doc type (e.g. nota fiscal) is also uploaded alongside NBS, merge without overwriting
           for (const [k, v] of Object.entries(fields)) if (v && !nbsFields[k]) nbsFields[k] = v;
         }
       }
 
-      // Combine address parts into single field (NBS already combines inline)
-      if (importMode !== "varejo_nbs") {
-        combineAddressFields(nbsFields);
+      const mergedResult: Record<string, string> = { ...nbsFields };
+
+      // Importar dados do Veículo Usado (Troca) do PDF da Avaliação/CRLV
+      for (const [k, v] of Object.entries(ownerFields)) {
+        if (k.startsWith("veiculo.") && v) mergedResult[k] = v;
       }
 
+      // Verificação de divergência (Proprietário do Usado vs Comprador NBS)
+      const ownerCpfCnpj = ownerFields["proprietario.cpfCnpj"]?.replace(/\D/g, "");
+      const buyerCpfCnpj = nbsFields["proprietario.cpfCnpj"]?.replace(/\D/g, "");
+
+      let requiresAvalista = false;
+      if (ownerCpfCnpj && buyerCpfCnpj) {
+        requiresAvalista = ownerCpfCnpj !== buyerCpfCnpj;
+      } else {
+        const sameName = ownerName && buyerName ? normalize(ownerName) === normalize(buyerName) : true;
+        requiresAvalista = !!ownerName && !!buyerName && !sameName;
+      }
+
+      if (requiresAvalista) {
+        mergedResult["avalista.cpfCnpj"] = "";
+        if (ownerFields["proprietario.nome"]) mergedResult["avalista.nome"] = ownerFields["proprietario.nome"];
+        if (ownerFields["proprietario.telefone"]) mergedResult["avalista.telefone"] = ownerFields["proprietario.telefone"];
+        if (ownerFields["proprietario.email"]) mergedResult["avalista.email"] = ownerFields["proprietario.email"];
+
+        for (const [k, v] of Object.entries(mergedResult)) {
+          if (k.startsWith("proprietario.") && v) {
+            const field = k.replace("proprietario.", "");
+            if (!["nome", "telefone", "email", "cpfCnpj"].includes(field)) {
+              mergedResult[`avalista.${field}`] = v;
+            }
+          }
+        }
+      }
+
+      // Preenchimento automático do COAF com base no Comprador
+      if (mergedResult["proprietario.nome"]) mergedResult["coaf.nomeRazaoSocial"] = mergedResult["proprietario.nome"];
+      if (mergedResult["proprietario.cpfCnpj"]) mergedResult["coaf.cpfCnpj"] = mergedResult["proprietario.cpfCnpj"];
+
       const result: ExtractionResult = {
-        fields: nbsFields,
-        requiresAvalista: false,
+        fields: mergedResult,
+        requiresAvalista,
+        ownerName,
+        buyerName,
       };
       setLastResult(result);
       onDataExtracted(result);
 
       toast({
-        title: "Proposta NBS importada!",
-        description: `Dados do comprador e veículo extraídos com sucesso.`,
+        title: "Proposta NBS extraída!",
+        description: requiresAvalista
+          ? `Nomes divergentes detectados — usar Termo com Avalista.`
+          : `${files.length} arquivo(s) processado(s).`,
       });
     } catch (err) {
       console.error(err);
@@ -257,7 +296,7 @@ const PdfUploader = ({ onDataExtracted, importMode, onImportModeChange }: Props)
                 )}
               </div>
               <p className="text-xs text-muted-foreground">
-                Importa a partir dos documentos padrão (Pedido de Vendas, CRLV, Nota Fiscal BYD).
+                Importa do Pedido de Vendas + CRLV/Avaliação do Usado + Nota Fiscal BYD.
               </p>
             </button>
 
@@ -279,7 +318,7 @@ const PdfUploader = ({ onDataExtracted, importMode, onImportModeChange }: Props)
                 )}
               </div>
               <p className="text-xs text-muted-foreground">
-                Importa comprador (aba Cliente) e veículo novo (aba Veículo) diretamente da proposta NBS em PDF.
+                Importa Proposta NBS (Comprador e Veículo Novo) + Avaliação/CRLV do Usado.
               </p>
             </button>
           </div>
@@ -292,7 +331,7 @@ const PdfUploader = ({ onDataExtracted, importMode, onImportModeChange }: Props)
           <CardTitle className="flex items-center gap-2 text-lg">
             <Upload className="h-5 w-5" />
             {importMode === "varejo_nbs"
-              ? "Upload da Proposta NBS (PDF)"
+              ? "Upload da Proposta NBS / Avaliação do Usado (PDFs)"
               : "Upload de Contratos / Formulários (opcional)"}
           </CardTitle>
         </CardHeader>
@@ -304,15 +343,13 @@ const PdfUploader = ({ onDataExtracted, importMode, onImportModeChange }: Props)
           >
             <Upload className="h-10 w-10 mx-auto text-muted-foreground mb-3" />
             <p className="text-sm text-muted-foreground mb-2">
-              {importMode === "varejo_nbs"
-                ? "Arraste a proposta NBS em PDF ou clique para selecionar"
-                : "Arraste PDFs aqui ou clique para selecionar (múltiplos arquivos)"}
+              Arraste os PDFs aqui ou clique para selecionar (múltiplos arquivos)
             </p>
             <input
               ref={fileInputRef}
               type="file"
               accept=".pdf"
-              multiple={importMode === "venda_direta"}
+              multiple
               className="hidden"
               onChange={handleFileChange}
             />
@@ -322,7 +359,7 @@ const PdfUploader = ({ onDataExtracted, importMode, onImportModeChange }: Props)
               size="sm"
               onClick={() => fileInputRef.current?.click()}
             >
-              Selecionar PDF{importMode === "venda_direta" ? "s" : ""}
+              Selecionar PDFs
             </Button>
           </div>
 
@@ -357,7 +394,7 @@ const PdfUploader = ({ onDataExtracted, importMode, onImportModeChange }: Props)
             </div>
           )}
 
-          {lastResult?.requiresAvalista && importMode === "venda_direta" && (
+          {lastResult?.requiresAvalista && (
             <Alert className="mt-4">
               <AlertCircle className="h-4 w-4" />
               <AlertDescription>
