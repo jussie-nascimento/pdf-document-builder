@@ -351,7 +351,7 @@ function extractGeneric(rawText: string): Record<string, string> {
         /\b(\d{2}\.\d{3}\.\d{3}\/\d{4}\-\d{2})\b/,
       ],
     ],
-    ["proprietario.endereco", [/(?:endere[çc]o|logradouro|ENDERE[ÇC]O)[:\s]+(.{8,80}?)(?=\n|CEP|BAIRRO|N[ºO°]|NUMERO|NÚMERO|NO\.)/i]],
+    ["proprietario.endereco", [/(?:endere[çc]o|logradouro|ENDERE[ÇC]O)[:\s]+(.{8,80}?)(?=\n|CEP|BAIRRO|NUMERO|NÚMERO|NO\.)/i]],
     ["proprietario.bairro", [/(?:bairro|BAIRRO)[:\s]+([A-ZÀ-Úa-zà-ú\s]{3,30}?)(?=\n|CEP|CIDADE|MUNIC[ÍI]PIO|UF|ESTADO)/i]],
     ["proprietario.cidade", [
       /Cidade\s+([A-ZÀ-Úa-zà-ú\s]{3,30}?)\s+Endere[çc]o/i,
