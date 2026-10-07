@@ -14,7 +14,29 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      access_requests: {
+        Row: {
+          id: string
+          email: string
+          phone: string
+          status: "pending" | "approved" | "blocked"
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          email: string
+          phone: string
+          status?: "pending" | "approved" | "blocked"
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          email?: string
+          phone?: string
+          status?: "pending" | "approved" | "blocked"
+          created_at?: string
+        }
+      }
     }
     Views: {
       [_ in never]: never

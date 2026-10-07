@@ -22,3 +22,9 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+
+# Temp & scratch
+supabase/.temp/
+scratch/
+.env
+

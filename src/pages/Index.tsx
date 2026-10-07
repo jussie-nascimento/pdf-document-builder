@@ -3,7 +3,7 @@ import { useForm, FormProvider } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { FormData, formSchema, DocumentType } from "@/types/document";
 import StepperIndicator from "@/components/StepperIndicator";
-import PdfUploader, { ExtractionResult } from "@/components/PdfUploader";
+import PdfUploader, { ExtractionResult, ImportMode } from "@/components/PdfUploader";
 import VehicleDataForm from "@/components/forms/VehicleDataForm";
 import NewVehicleDataForm from "@/components/forms/NewVehicleDataForm";
 import PersonDataForm from "@/components/forms/PersonDataForm";
@@ -26,6 +26,7 @@ const Index = () => {
     "procuracao_0km", "coaf", "termo_responsabilidade", "procuracao_usado", "comprovante_residencia_detran"
   ]);
   const [generating, setGenerating] = useState(false);
+  const [importMode, setImportMode] = useState<ImportMode>("venda_direta");
   const { toast } = useToast();
 
   const form = useForm<FormData>({
@@ -70,8 +71,13 @@ const Index = () => {
     setGenerating(true);
     try {
       for (const docType of selectedDocs) {
+        const payloadData = form.getValues();
+        if (!selectedDocs.includes("termo_responsabilidade_avalista")) {
+          payloadData.avalista = {};
+        }
+
         const { data, error } = await supabase.functions.invoke("generate-pdf", {
-          body: { type: docType, data: form.getValues() },
+          body: { type: docType, data: payloadData },
         });
 
         if (error) throw error;
@@ -128,10 +134,16 @@ const Index = () => {
         <FormProvider {...form}>
           <form onSubmit={(e) => e.preventDefault()} className="space-y-6">
             <div className={step === 0 ? 'block' : 'hidden'}>
-                <PdfUploader onDataExtracted={handleExtractedData} />
-                <PersonDataForm form={form} prefix="proprietario" title="Comprador / Avalista" />
+                <PdfUploader
+                  onDataExtracted={handleExtractedData}
+                  importMode={importMode}
+                  onImportModeChange={setImportMode}
+                />
+                <PersonDataForm form={form} prefix="proprietario" title={selectedDocs.includes("termo_responsabilidade_avalista") ? "Comprador / Avalista" : "Comprador"} />
                 <NewVehicleDataForm form={form} />
-                <PersonDataForm form={form} prefix="avalista" title="Proprietário do Usado" />
+                {selectedDocs.includes("termo_responsabilidade_avalista") && (
+                  <PersonDataForm form={form} prefix="avalista" title="Proprietário do Usado" />
+                )}
                 <VehicleDataForm form={form} />
                 <CoafDataForm form={form} />
                 <div className="max-w-xs pt-4">

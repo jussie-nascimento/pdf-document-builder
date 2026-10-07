@@ -46,11 +46,7 @@ function generateProcuracao0KM(d) {
           { text: p.nome || "___________________________________________", bold: true },
           " portador do CPF/CNPJ: ",
           { text: p.cpfCnpj || "__________________", bold: true },
-          " Residente à ", { text: p.endereco || "_____________________________________", bold: true },
-          " Bairro: ", { text: p.bairro || "___________________", bold: true },
-          ", CEP ", { text: p.cep || "___________", bold: true },
-          " Cidade ", { text: p.cidade || "___________________________", bold: true },
-          " - ", { text: p.estado || "___", bold: true },
+          " Residente à ", { text: p.endereco || "____________________________________________________________________________________________________", bold: true },
           ". Constituo e nomeio meu bastante procurador o Sr. ESTEVAN DE REIS HEINSCH PRESTES, Portador do CPF: 054.480.480-56 e RG: 054.480.480-56, e/ou, Sr. WAGNER QUEIROZ DA SILVA, Portador do CPF: 803.783.660-68, RG: 4073166847 e/ou Sr. RAPHAEL MADALENA DA SILVA, Portador do CPF: 867.987.740-91 e RG: 4113150991, e/ou Sr. CONRADO QUEIROZ PIRES DA SILVA, Portador do CPF: 031.837.730-66 e RG: 9115753197 para fins especiais de assinar, a (GRT) GUIA DE RESPONSABILIDADE TÉCNICA, solicitar CRLV-E, assinar requerimentos, solicitar atpve, declarar endereço, fazer alterações e informações do veiculo, autorização de confecção e retirada de placa junto as EPIVs, autorização para encaminhamento de processo junto ao Detran/RS do veículo de minha propriedade com as características que seguem:"
         ],
         alignment: 'justify',
@@ -171,7 +167,7 @@ function generateTermoResponsabilidade(d, docType) {
   let p = d.proprietario || {};
   const v = d.veiculo || {};
   let a = d.avalista || {};
-  const isAvalista = docType === "termo_responsabilidade_avalista" || !!a.nome;
+  const isAvalista = docType === "termo_responsabilidade_avalista";
   
   if (docType === "termo_responsabilidade_avalista") {
     const temp = p;
@@ -191,8 +187,7 @@ function generateTermoResponsabilidade(d, docType) {
       
       { text: "PROPRIETÁRIO:", bold: true },
       { text: `Nome: ${p.nome || "___________________________________________"}` },
-      { text: `Endereço: ${p.endereco || "______________________"}` },
-      { text: `Cidade: ${p.cidade || "___________"} - ${p.estado || "___"}   Bairro: ${p.bairro || "_______"}   CEP: ${p.cep || "_______"}` },
+      { text: `Endereço: ${p.endereco || "_____________________________________________________________________________________"}` },
       { text: `Nacionalidade: ${p.nacionalidade || "_________"}   Estado civil: ${p.estadoCivil || "_____"}` },
       { text: `Identidade/RG: ${p.rg || "__________"}   CPF/CNPJ: ${p.cpfCnpj || "_______________"}` },
       { text: `Valor de avaliação: R$ ${v.valorAvaliacao || "___________"}`, margin: [0,0,0,10] },
@@ -200,8 +195,7 @@ function generateTermoResponsabilidade(d, docType) {
       ...(isAvalista ? [
         { text: "AVALISTA:", bold: true },
         { text: `Nome: ${a.nome || "___________________________________________"}` },
-        { text: `Endereço: ${a.endereco || "______________________"}` },
-        { text: `Cidade: ${a.cidade || "___________"} - ${a.estado || "___"}   Bairro: ${a.bairro || "_______"}   CEP: ${a.cep || "_______"}` },
+        { text: `Endereço: ${a.endereco || "_____________________________________________________________________________________"}` },
         { text: `Nacionalidade: ${a.nacionalidade || "_________"}   Estado civil: ${a.estadoCivil || "_____"}` },
         { text: `Identidade/RG: ${a.rg || "__________"}   CPF/CNPJ: ${a.cpfCnpj || "_______________"}`, margin: [0,0,0,10] },
       ] : []),
@@ -240,10 +234,7 @@ function generateProcuracaoUsado(d) {
         text: [
           "Por este instrumento eu ", { text: p.nome || "___________________________________________", bold: true },
           ", CPF/CNPJ: ", { text: p.cpfCnpj || "________________", bold: true },
-          ", Residência: ", { text: p.endereco || "_____________________________________", bold: true },
-          ", Bairro: ", { text: p.bairro || "___________________", bold: true },
-          ", Município: ", { text: p.cidade || "_________________________", bold: true },
-          " - ", { text: p.estado || "___", bold: true },
+          ", Residência: ", { text: p.endereco || "_________________________________________________________________________________________________________________", bold: true },
           ", nomeio e constituo meu bastante procurador a empresa TRINITA VEICULOS LTDA, por seus representantes legais, CNPJ 11.475.046/0001-83 com sede a Rua Edu Chaves, 390, para o fim especial de vender a quem bem entender, inclusive para seu próprio nome, e pelo preço que julgar conveniente um automóvel, Marca: ",
           { text: v.marca || "_________________", bold: true },
           ", Modelo: ", { text: v.modelo || "_________________________", bold: true },
@@ -312,29 +303,13 @@ function generateComprovanteResidenciaDetran(d) {
       {
         columns: [
           { text: "Endereço: ", width: 'auto', bold: true },
-          { text: p.endereco || "_________________________________", width: '*', margin: [5, 0, 10, 0] },
-          { text: "Nº ", width: 'auto', bold: true },
-          { text: "________", width: 'auto', margin: [5, 0, 10, 0] },
-          { text: "Compl.: ", width: 'auto', bold: true },
-          { text: "________", width: 'auto', margin: [5, 0, 0, 0] }
+          { text: p.endereco || "_________________________________________________________________________________________________", width: '*', margin: [5, 0, 10, 0] }
         ],
         margin: [0, 0, 0, 15]
       },
       
       {
         columns: [
-          { text: "Cidade: ", width: 'auto', bold: true },
-          { text: `${p.cidade || "______________"} – ${p.estado || "___"}`, width: '*', margin: [5, 0, 10, 0] },
-          { text: "CEP: ", width: 'auto', bold: true },
-          { text: p.cep || "_______________", width: '*', margin: [5, 0, 0, 0] }
-        ],
-        margin: [0, 0, 0, 15]
-      },
-      
-      {
-        columns: [
-          { text: "Bairro: ", width: 'auto', bold: true },
-          { text: p.bairro || "_________________________________", width: '*', margin: [5, 0, 10, 0] },
           { text: "Fone: ", width: 'auto', bold: true },
           { text: p.telefone || "_______________", width: '*', margin: [5, 0, 0, 0] }
         ],

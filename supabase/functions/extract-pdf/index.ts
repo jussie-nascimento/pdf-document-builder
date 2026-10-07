@@ -6,7 +6,7 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
-type DocKind = "veiculo" | "pedido_vendas" | "nota_fiscal_byd" | "outro";
+type DocKind = "veiculo" | "pedido_vendas" | "nota_fiscal_byd" | "proposta_nbs" | "outro";
 
 function detectDocKind(text: string): DocKind {
   const t = text.toUpperCase();
@@ -20,6 +20,20 @@ function detectDocKind(text: string): DocKind {
     t.includes("PROTOCOLO DE AUTORIZA")
   ) {
     return "nota_fiscal_byd";
+  }
+
+  // NBS Proposal — check before generic "PEDIDO DE VENDA" to avoid collision
+  if (
+    t.includes("PROPOSTA NBS") ||
+    t.includes("COD. FINAME") ||
+    t.includes("COD FINAME") ||
+    t.includes("COR INTERNA") ||
+    (t.includes("N° MOTOR") && t.includes("RENAVAM")) ||
+    (t.includes("PATIO") && t.includes("N° MOTOR")) ||
+    (t.includes("PATÍO") && t.includes("RENAVAM")) ||
+    (t.includes("NCM") && t.includes("RENAVAM") && t.includes("COR INTERNA"))
+  ) {
+    return "proposta_nbs";
   }
 
   if (
@@ -148,6 +162,139 @@ function extractBydInvoice(rawText: string): Record<string, string> {
   return fields;
 }
 
+/**
+ * Extract data from a NBS Proposal PDF.
+ *
+ * Maps to exactly the same form fields as Venda Direta:
+ *   COMPRADOR → proprietario.nome, cpfCnpj, endereco (combined), telefone, email
+ *   VEÍCULO NOVO → veiculoNovo.marca (BYD), modelo, chassi, cor, anoFabricacao, anoModelo
+ *
+ * Address is assembled inline from End. + Bairro + Cidade/UF, so it fills
+ * the single "Endereço Completo" field directly.
+ */
+function extractNbsProposal(rawText: string): Record<string, string> {
+  const text = normalizeSpaces(rawText);
+  const fields: Record<string, string> = {};
+
+  // ── COMPRADOR (aba Cliente) ───────────────────────────────────────────────
+
+  // Nome / Razão Social
+  const nome = firstMatch(text, [
+    /(?:Nome[\\/\s]Raz[ãa]o\s*Social|Nome\s*do\s*Cliente|Nome)[:\s]+([A-ZÀ-Úa-zà-ú][A-ZÀ-Úa-zà-ú\s\.\-\,\']{3,80}?)(?=\s+(?:CNPJ|CPF|End\.|Endere|Bairro|E-?mail|Fone|CEP|\n))/i,
+    /^([A-ZÀ-Ú][A-ZÀ-Ú\s]{5,60})\s+CNPJ/im,
+    /Cliente[:\s]+([A-ZÀ-Úa-zà-ú][A-ZÀ-Úa-zà-ú\s\.\-]{3,60}?)(?=\n)/i,
+  ]);
+  if (nome) fields["proprietario.nome"] = nome.trim();
+
+  // CNPJ / CPF
+  const cnpjCpf = firstMatch(text, [
+    /CNPJ[:\s]+([\d\.\-\/]+)/i,
+    /CPF[:\s]+([\d\.\-]+)/i,
+    /\b(\d{2}\.\d{3}\.\d{3}\/\d{4}\-\d{2})\b/,
+    /\b(\d{3}\.\d{3}\.\d{3}\-\d{2})\b/,
+  ]);
+  if (cnpjCpf) fields["proprietario.cpfCnpj"] = cnpjCpf.trim();
+
+  // Endereço (logradouro/número)
+  const endPart = firstMatch(text, [
+    /(?:End\.[:\s]|Endere[çc]o[:\s])(.{8,80}?)(?=\s*(?:Bairro|CEP|Cidade|\n))/i,
+    /(?:Avenida|Rua|Av\.|R\.)\s+[A-ZÀ-Úa-zà-ú\s\.\d,]+(?=\s+(?:Bairro|N[ºo°]|CEP|\n))/i,
+  ]);
+
+  // Bairro
+  const bairroPart = firstMatch(text, [
+    /Bairro[:\s]+([A-ZÀ-Úa-zà-ú\s]{3,40}?)(?=\s*(?:Cidade|CEP|UF|\n))/i,
+    /Bairro[:\s]+([A-ZÀ-Úa-zà-ú\s]{3,40})/i,
+  ]);
+
+  // Cidade / UF  — formats: "Canoas/RS" or "Canoas - RS" or "Cidade/UF: Canoas/RS"
+  let cidadePart = "";
+  let ufPart = "";
+  const cidadeUfMatch =
+    text.match(/Cidade[\\/\s]*UF[:\s]+([A-ZÀ-Úa-zà-ú\s]+?)\s*[\/\-]\s*([A-Z]{2})\b/i) ||
+    text.match(/([A-ZÀ-Úa-zà-ú]{3,30})\s*[\/\-]\s*([A-Z]{2})\s+(?:CEP|Fone|Tel|E-?mail)/i);
+  if (cidadeUfMatch) {
+    cidadePart = cidadeUfMatch[1].trim();
+    ufPart = cidadeUfMatch[2].trim();
+  } else {
+    const cidadeOnly = firstMatch(text, [/Cidade[:\s]+([A-ZÀ-Úa-zà-ú\s]{3,30}?)(?=\s*(?:UF|\/|CEP|\n))/i]);
+    if (cidadeOnly) cidadePart = cidadeOnly.trim();
+    const ufOnly = firstMatch(text, [/\bUF[:\s]+([A-Z]{2})\b/i, /\/\s*([A-Z]{2})\s+(?:CEP|Fone)/i]);
+    if (ufOnly) ufPart = ufOnly.trim();
+  }
+
+  // Combine: "End., Bairro, Cidade/UF"
+  const addressParts: string[] = [];
+  if (endPart) addressParts.push(endPart.trim());
+  if (bairroPart) addressParts.push(bairroPart.trim());
+  if (cidadePart && ufPart) addressParts.push(`${cidadePart}/${ufPart}`);
+  else if (cidadePart) addressParts.push(cidadePart);
+  if (addressParts.length > 0) fields["proprietario.endereco"] = addressParts.join(", ");
+
+  // Telefone — preferir Fone Cel; fallback para Fone Res
+  const foneCel = firstMatch(text, [
+    /Fone\s*Cel[:\s]+([\d\s\(\)\-\+]{7,20})/i,
+    /Celular[:\s]+([\d\s\(\)\-\+]{7,20})/i,
+  ]);
+  const foneRes = firstMatch(text, [
+    /Fone\s*Res[:\s]+([\d\s\(\)\-\+]{7,20})/i,
+    /Fone[:\s]+([\d\s\(\)\-\+]{7,20})/i,
+  ]);
+  const telefone = foneCel?.trim() || foneRes?.trim();
+  if (telefone) fields["proprietario.telefone"] = telefone;
+
+  // E-mail
+  const email = firstMatch(text, [
+    /E-?mail[:\s]+([a-zA-Z0-9._%+\-]+@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,})/i,
+  ]);
+  if (email) fields["proprietario.email"] = email.trim();
+
+  // ── VEÍCULO NOVO (aba Veículo) ────────────────────────────────────────────
+
+  // Marca — sempre BYD na proposta NBS
+  fields["veiculoNovo.marca"] = "BYD";
+
+  // Modelo — "Veículo: DOLPHIN MINI GS5EV"
+  const modelo = firstMatch(text, [
+    /Ve[íi]culo[:\s]+([A-Z0-9][A-Z0-9\s\-\.\/]{2,50}?)(?=\s*(?:Ano|Chassi|Cor|NCM|Motor|\n))/i,
+    /Ve[íi]culo[:\s]+(.+?)(?=\n)/i,
+  ]);
+  if (modelo) fields["veiculoNovo.modelo"] = modelo.replace(/\s+/g, " ").trim();
+
+  // Chassi (17 chars)
+  const chassi = firstMatch(text, [
+    /Chassi[:\s]+([A-HJ-NPR-Z0-9]{17})/i,
+    /\b([A-HJ-NPR-Z0-9]{17})\b/,
+  ]);
+  if (chassi) fields["veiculoNovo.chassi"] = chassi.toUpperCase();
+
+  // Cor (exterior — stops before "Cor Interna")
+  const cor = firstMatch(text, [
+    /\bCor[:\s]+([A-ZÀ-Úa-zà-ú\s]{3,25}?)(?=\s*(?:Cor\s*Interna|Chassi|Motor|NCM|\n))/i,
+    /\bCor[:\s]+([A-ZÀ-Úa-zà-ú\s]{3,25})/i,
+  ]);
+  if (cor) fields["veiculoNovo.cor"] = cor.trim();
+
+  // Ano Fabricação / Ano Modelo — "26/27" → 2026 / 2027
+  const anoModelo = text.match(/Ano[\\/\s]*Modelo[:\s]+(\d{2,4})\s*[\/\-]\s*(\d{2,4})/i);
+  if (anoModelo) {
+    fields["veiculoNovo.anoFabricacao"] = anoModelo[1].length === 2 ? `20${anoModelo[1]}` : anoModelo[1];
+    fields["veiculoNovo.anoModelo"]     = anoModelo[2].length === 2 ? `20${anoModelo[2]}` : anoModelo[2];
+  } else {
+    const ano4 = text.match(/\b(20\d{2})\s*[\/\-]\s*(20\d{2})\b/);
+    if (ano4) {
+      fields["veiculoNovo.anoFabricacao"] = ano4[1];
+      fields["veiculoNovo.anoModelo"]     = ano4[2];
+    }
+  }
+
+  // ── COAF auto-fill ────────────────────────────────────────────────────────
+  if (fields["proprietario.nome"])    fields["coaf.nomeRazaoSocial"] = fields["proprietario.nome"];
+  if (fields["proprietario.cpfCnpj"]) fields["coaf.cpfCnpj"]        = fields["proprietario.cpfCnpj"];
+
+  return fields;
+}
+
 /** Generic extraction for CRLV/Pedido de Vendas/etc. */
 function extractGeneric(rawText: string): Record<string, string> {
   const text = normalizeSpaces(rawText);
@@ -271,6 +418,8 @@ serve(async (req) => {
     let fields: Record<string, string>;
     if (docKind === "nota_fiscal_byd") {
       fields = extractBydInvoice(text);
+    } else if (docKind === "proposta_nbs") {
+      fields = extractNbsProposal(text);
     } else {
       fields = extractGeneric(text);
     }
