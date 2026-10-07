@@ -166,11 +166,8 @@ function extractBydInvoice(rawText: string): Record<string, string> {
  * Extract data from a NBS Proposal PDF.
  *
  * Maps to exactly the same form fields as Venda Direta:
- *   COMPRADOR → proprietario.nome, cpfCnpj, endereco (combined), telefone, email
- *   VEÍCULO NOVO → veiculoNovo.marca (BYD), modelo, chassi, cor, anoFabricacao, anoModelo
- *
- * Address is assembled inline from End. + Bairro + Cidade/UF, so it fills
- * the single "Endereço Completo" field directly.
+ *   COMPRADOR → proprietario.nome, cpfCnpj, endereco (combined: End, Bairro, Cidade/UF, CEP), telefone, email
+ *   VEÍCULO NOVO → veiculoNovo.marca (BYD), modelo, chassi, cor, anoFabricacao, anoModelo, valorVenda
  */
 function extractNbsProposal(rawText: string): Record<string, string> {
   const text = normalizeSpaces(rawText);
@@ -180,9 +177,9 @@ function extractNbsProposal(rawText: string): Record<string, string> {
 
   // Nome / Razão Social
   const nome = firstMatch(text, [
-    /(?:Nome[\\/\s]Raz[ãa]o\s*Social|Nome\s*do\s*Cliente|Nome)[:\s]+([A-ZÀ-Úa-zà-ú][A-ZÀ-Úa-zà-ú\s\.\-\,\']{3,80}?)(?=\s+(?:CNPJ|CPF|End\.|Endere|Bairro|E-?mail|Fone|CEP|\n))/i,
+    /Cliente[:\s]+(.+?)(?=\s*(?:CNPJ|CPF|End\.|Fone|CEP|\n|$))/i,
+    /(?:Nome[\\/\s]Raz[ãa]o\s*Social|Nome\s*do\s*Cliente|Nome)[:\s]+(.+?)(?=\s*(?:CNPJ|CPF|End\.|Fone|CEP|\n|$))/i,
     /^([A-ZÀ-Ú][A-ZÀ-Ú\s]{5,60})\s+CNPJ/im,
-    /Cliente[:\s]+([A-ZÀ-Úa-zà-ú][A-ZÀ-Úa-zà-ú\s\.\-]{3,60}?)(?=\n)/i,
   ]);
   if (nome) fields["proprietario.nome"] = nome.trim();
 
@@ -195,19 +192,18 @@ function extractNbsProposal(rawText: string): Record<string, string> {
   ]);
   if (cnpjCpf) fields["proprietario.cpfCnpj"] = cnpjCpf.trim();
 
-  // Endereço (logradouro/número)
+  // Endereço (logradouro/número/complemento)
   const endPart = firstMatch(text, [
-    /(?:End\.[:\s]|Endere[çc]o[:\s])(.{8,80}?)(?=\s*(?:Bairro|CEP|Cidade|\n))/i,
+    /End\.?[:\s]+(.+?)(?=\s*(?:Fone|Bairro|CEP|Cidade|\n|$))/i,
     /(?:Avenida|Rua|Av\.|R\.)\s+[A-ZÀ-Úa-zà-ú\s\.\d,]+(?=\s+(?:Bairro|N[ºo°]|CEP|\n))/i,
   ]);
 
   // Bairro
   const bairroPart = firstMatch(text, [
-    /Bairro[:\s]+([A-ZÀ-Úa-zà-ú\s]{3,40}?)(?=\s*(?:Cidade|CEP|UF|\n))/i,
-    /Bairro[:\s]+([A-ZÀ-Úa-zà-ú\s]{3,40})/i,
+    /Bairro[:\s]+(.+?)(?=\s*(?:Fone|Cidade|CEP|UF|IE|\n|$))/i,
   ]);
 
-  // Cidade / UF  — formats: "Canoas/RS" or "Canoas - RS" or "Cidade/UF: Canoas/RS"
+  // Cidade / UF
   let cidadePart = "";
   let ufPart = "";
   const cidadeUfMatch =
@@ -223,24 +219,34 @@ function extractNbsProposal(rawText: string): Record<string, string> {
     if (ufOnly) ufPart = ufOnly.trim();
   }
 
-  // Combine: "End., Bairro, Cidade/UF"
+  // CEP
+  const cepPart = firstMatch(text, [
+    /CEP[:\s]+([\d]{5}\-?[\d]{3})/i,
+    /CEP[:\s]+(\d{8})/i,
+  ]);
+
+  // Combine: "End., Bairro, Cidade/UF, CEP: 99999-999"
   const addressParts: string[] = [];
   if (endPart) addressParts.push(endPart.trim());
   if (bairroPart) addressParts.push(bairroPart.trim());
   if (cidadePart && ufPart) addressParts.push(`${cidadePart}/${ufPart}`);
   else if (cidadePart) addressParts.push(cidadePart);
+  if (cepPart) addressParts.push(`CEP: ${cepPart.trim()}`);
   if (addressParts.length > 0) fields["proprietario.endereco"] = addressParts.join(", ");
 
-  // Telefone — preferir Fone Cel; fallback para Fone Res
+  // Telefone — preferir Fone Cel; fallback para Fone Res ou Fone Com
   const foneCel = firstMatch(text, [
     /Fone\s*Cel[:\s]+([\d\s\(\)\-\+]{7,20})/i,
     /Celular[:\s]+([\d\s\(\)\-\+]{7,20})/i,
   ]);
   const foneRes = firstMatch(text, [
     /Fone\s*Res[:\s]+([\d\s\(\)\-\+]{7,20})/i,
+  ]);
+  const foneCom = firstMatch(text, [
+    /Fone\s*Com[:\s]+([\d\s\(\)\-\+]{7,20})/i,
     /Fone[:\s]+([\d\s\(\)\-\+]{7,20})/i,
   ]);
-  const telefone = foneCel?.trim() || foneRes?.trim();
+  const telefone = foneCel?.trim() || foneRes?.trim() || foneCom?.trim();
   if (telefone) fields["proprietario.telefone"] = telefone;
 
   // E-mail
@@ -256,22 +262,20 @@ function extractNbsProposal(rawText: string): Record<string, string> {
 
   // Modelo — "Veículo: DOLPHIN MINI GS5EV"
   const modelo = firstMatch(text, [
-    /Ve[íi]culo[:\s]+([A-Z0-9][A-Z0-9\s\-\.\/]{2,50}?)(?=\s*(?:Ano|Chassi|Cor|NCM|Motor|\n))/i,
-    /Ve[íi]culo[:\s]+(.+?)(?=\n)/i,
+    /Ve[íi]culo[:\s]+(.+?)(?=\s*(?:Chassi|Ano|Cor|NCM|Motor|\n|$))/i,
   ]);
   if (modelo) fields["veiculoNovo.modelo"] = modelo.replace(/\s+/g, " ").trim();
 
-  // Chassi (17 chars)
+  // Chassi (17 chars alphanumeric)
   const chassi = firstMatch(text, [
-    /Chassi[:\s]+([A-HJ-NPR-Z0-9]{17})/i,
-    /\b([A-HJ-NPR-Z0-9]{17})\b/,
+    /Chassi[:\s]+([A-Z0-9]{17})/i,
+    /\b([A-Z0-9]{17})\b/,
   ]);
   if (chassi) fields["veiculoNovo.chassi"] = chassi.toUpperCase();
 
-  // Cor (exterior — stops before "Cor Interna")
+  // Cor (exterior — usa negative lookahead para não pegar "Cor Interna")
   const cor = firstMatch(text, [
-    /\bCor[:\s]+([A-ZÀ-Úa-zà-ú\s]{3,25}?)(?=\s*(?:Cor\s*Interna|Chassi|Motor|NCM|\n))/i,
-    /\bCor[:\s]+([A-ZÀ-Úa-zà-ú\s]{3,25})/i,
+    /\bCor(?!\s*Interna)[:\s]+([A-ZÀ-Úa-zà-ú]{3,20})/i,
   ]);
   if (cor) fields["veiculoNovo.cor"] = cor.trim();
 
@@ -287,6 +291,13 @@ function extractNbsProposal(rawText: string): Record<string, string> {
       fields["veiculoNovo.anoModelo"]     = ano4[2];
     }
   }
+
+  // Valor de Venda / Valor Nota Fiscal
+  const valorVenda = firstMatch(text, [
+    /Valor\s+Nota\s+Fiscal[:\s]*(?:R\$)?\s*([\d]{1,3}(?:[\.\,]\d{3})*[\.\,]\d{2})/i,
+    /Valor\s+(?:Nota\s+Fiscal|de\s+Venda|Venda)[:\s]*(?:R\$)?\s*([\d\.\,]+)/i,
+  ]);
+  if (valorVenda) fields["veiculoNovo.valorVenda"] = valorVenda.trim();
 
   // ── COAF auto-fill ────────────────────────────────────────────────────────
   if (fields["proprietario.nome"])    fields["coaf.nomeRazaoSocial"] = fields["proprietario.nome"];
