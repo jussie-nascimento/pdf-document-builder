@@ -1,6 +1,7 @@
 import React, { Component, ErrorInfo, ReactNode } from "react";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { AlertCircle } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { AlertCircle, RefreshCw } from "lucide-react";
 
 interface Props {
   children?: ReactNode;
@@ -16,11 +17,10 @@ export class ErrorBoundary extends Component<Props, State> {
   public state: State = {
     hasError: false,
     error: null,
-    errorInfo: null
+    errorInfo: null,
   };
 
   public static getDerivedStateFromError(error: Error): State {
-    // Update state so the next render will show the fallback UI.
     return { hasError: true, error, errorInfo: null };
   }
 
@@ -29,18 +29,36 @@ export class ErrorBoundary extends Component<Props, State> {
     this.setState({ errorInfo });
   }
 
+  private handleReload = () => {
+    window.location.reload();
+  };
+
   public render() {
     if (this.state.hasError) {
+      const isRemoveChild = this.state.error?.toString().includes("removeChild");
+
       return (
-        <Alert variant="destructive" className="m-4">
-          <AlertCircle className="h-4 w-4" />
-          <AlertTitle>Algo deu errado no aplicativo!</AlertTitle>
-          <AlertDescription>
-            <div className="mt-2 whitespace-pre-wrap break-words text-xs font-mono bg-destructive/10 p-4 rounded-md">
+        <Alert variant="destructive" className="m-4 max-w-2xl mx-auto shadow-lg">
+          <AlertCircle className="h-5 w-5" />
+          <AlertTitle className="text-lg font-bold">Algo deu errado no aplicativo!</AlertTitle>
+          <AlertDescription className="space-y-3 mt-2">
+            {isRemoveChild && (
+              <p className="text-sm font-medium text-amber-200 bg-amber-900/30 p-2 rounded">
+                💡 Este erro costuma acontecer quando a tradução automática do navegador (Google Tradutor) altera a página.
+              </p>
+            )}
+
+            <div className="whitespace-pre-wrap break-words text-xs font-mono bg-destructive/10 p-4 rounded-md max-h-48 overflow-auto border border-destructive/20">
               {this.state.error && this.state.error.toString()}
               {this.state.errorInfo && this.state.errorInfo.componentStack}
             </div>
-            <p className="mt-4 font-bold text-sm">Por favor, envie esse log vermelho para o Antigravity!</p>
+
+            <div className="flex items-center gap-3 pt-2">
+              <Button type="button" variant="outline" size="sm" onClick={this.handleReload} className="bg-background text-foreground">
+                <RefreshCw className="h-4 w-4 mr-2" />
+                Recarregar Página
+              </Button>
+            </div>
           </AlertDescription>
         </Alert>
       );

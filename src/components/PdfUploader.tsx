@@ -1,4 +1,4 @@
-import { useState, useCallback } from "react";
+import { useState, useCallback, useRef } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Upload, FileText, Loader2, X, AlertCircle, Building2, Car } from "lucide-react";
@@ -30,6 +30,7 @@ const PdfUploader = ({ onDataExtracted, importMode, onImportModeChange }: Props)
   const [files, setFiles] = useState<File[]>([]);
   const [loading, setLoading] = useState(false);
   const [lastResult, setLastResult] = useState<ExtractionResult | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
 
   const addFiles = (newFiles: FileList | File[]) => {
@@ -307,24 +308,28 @@ const PdfUploader = ({ onDataExtracted, importMode, onImportModeChange }: Props)
                 ? "Arraste a proposta NBS em PDF ou clique para selecionar"
                 : "Arraste PDFs aqui ou clique para selecionar (múltiplos arquivos)"}
             </p>
-            <label>
-              <input
-                type="file"
-                accept=".pdf"
-                multiple={importMode === "venda_direta"}
-                className="hidden"
-                onChange={handleFileChange}
-              />
-              <Button variant="outline" size="sm" asChild>
-                <span>Selecionar PDF{importMode === "venda_direta" ? "s" : ""}</span>
-              </Button>
-            </label>
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept=".pdf"
+              multiple={importMode === "venda_direta"}
+              className="hidden"
+              onChange={handleFileChange}
+            />
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={() => fileInputRef.current?.click()}
+            >
+              Selecionar PDF{importMode === "venda_direta" ? "s" : ""}
+            </Button>
           </div>
 
           {files.length > 0 && (
             <div className="mt-4 space-y-2">
               {files.map((file, i) => (
-                <div key={i} className="flex items-center gap-3 p-2 border rounded-md">
+                <div key={file.name + i} className="flex items-center gap-3 p-2 border rounded-md">
                   <FileText className="h-5 w-5 text-primary shrink-0" />
                   <div className="flex-1 min-w-0">
                     <p className="font-medium text-sm truncate">{file.name}</p>
@@ -335,16 +340,19 @@ const PdfUploader = ({ onDataExtracted, importMode, onImportModeChange }: Props)
                   </Button>
                 </div>
               ))}
-              <Button onClick={extractData} disabled={loading} className="w-full">
-                <Loader2 className={`h-4 w-4 animate-spin mr-2 ${loading ? "inline-block" : "hidden"}`} />
-                <span className={loading ? "hidden" : "inline-block"}>
-                  {importMode === "varejo_nbs"
-                    ? `Importar Proposta NBS (${files.length} arquivo(s))`
-                    : `Extrair Dados de ${files.length} arquivo(s)`}
-                </span>
-                <span className={loading ? "inline-block" : "hidden"}>
-                  {importMode === "varejo_nbs" ? "Importando NBS..." : "Extraindo dados..."}
-                </span>
+              <Button type="button" onClick={extractData} disabled={loading} className="w-full">
+                {loading ? (
+                  <>
+                    <Loader2 className="h-4 w-4 animate-spin mr-2 inline-block" />
+                    <span>{importMode === "varejo_nbs" ? "Importando NBS..." : "Extraindo dados..."}</span>
+                  </>
+                ) : (
+                  <span>
+                    {importMode === "varejo_nbs"
+                      ? `Importar Proposta NBS (${files.length} arquivo(s))`
+                      : `Extrair Dados de ${files.length} arquivo(s)`}
+                  </span>
+                )}
               </Button>
             </div>
           )}
