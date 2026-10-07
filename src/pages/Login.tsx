@@ -144,6 +144,16 @@ const Login = () => {
       await supabase.auth.signOut();
 
       if (signUpError && !signUpError.message.toLowerCase().includes("already registered")) {
+        const isRateLimit = signUpError.message.toLowerCase().includes("rate limit");
+        if (isRateLimit) {
+          setIsLoading(false);
+          toast({
+            title: "Limite de tentativas excedido",
+            description: "O Supabase atingiu o limite temporário de envios de e-mail. Desative a opção 'Confirm Email' no painel do Supabase (Authentication -> Providers -> Email) para liberar novos cadastros sem restrições.",
+            variant: "destructive",
+          });
+          return;
+        }
         setIsLoading(false);
         toast({ title: "Erro ao cadastrar", description: signUpError.message, variant: "destructive" });
         return;
