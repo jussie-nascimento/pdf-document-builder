@@ -5,7 +5,8 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
-import { Loader2, ShieldCheck, CheckCircle, XCircle, Clock, LogOut, FileText } from "lucide-react";
+import { Input } from "@/components/ui/input";
+import { Loader2, ShieldCheck, CheckCircle, XCircle, Clock, LogOut, FileText, BarChart3 } from "lucide-react";
 
 type AccessRequest = {
   id: string;
@@ -17,11 +18,16 @@ type AccessRequest = {
 
 const ADMIN_EMAIL = "jnascime06@gmail.com";
 
+type ReportRow = { email: string; logins: number; exports: number; docs: Record<string, number> };
+
 const Admin = () => {
   const [requests, setRequests] = useState<AccessRequest[]>([]);
   const [loading, setLoading] = useState(true);
   const [actionLoading, setActionLoading] = useState<string | null>(null);
   const [isAdmin, setIsAdmin] = useState<boolean | null>(null);
+  const [reportMonth, setReportMonth] = useState(() => new Date().toISOString().slice(0, 7));
+  const [report, setReport] = useState<ReportRow[] | null>(null);
+  const [reportLoading, setReportLoading] = useState(false);
   const navigate = useNavigate();
   const { toast } = useToast();
 
@@ -37,6 +43,7 @@ const Admin = () => {
       }
       setIsAdmin(true);
       fetchRequests();
+      fetchReport(reportMonth);
     });
   }, [navigate]);
 
@@ -53,6 +60,38 @@ const Admin = () => {
       setRequests(data || []);
     }
     setLoading(false);
+  };
+
+  const fetchReport = async (month: string) => {
+    setReportLoading(true);
+    const [y, m] = month.split("-").map(Number);
+    const from = new Date(y, m - 1, 1).toISOString();
+    const to = new Date(y, m, 1).toISOString();
+    const { data, error } = await supabase
+      .from("access_logs")
+      .select("email,event,doc_type")
+      .gte("created_at", from)
+      .lt("created_at", to)
+      .order("created_at", { ascending: false })
+      .limit(5000);
+    if (error) {
+      toast({ title: "Erro ao carregar relatório", description: error.message, variant: "destructive" });
+      setReport(null);
+    } else {
+      const map = new Map<string, ReportRow>();
+      for (const row of (data || []) as Array<{ email: string; event: string; doc_type: string | null }>) {
+        let r = map.get(row.email);
+        if (!r) { r = { email: row.email, logins: 0, exports: 0, docs: {} }; map.set(row.email, r); }
+        if (row.event === "login") r.logins += 1;
+        else if (row.event === "export") {
+          r.exports += 1;
+          const dt = row.doc_type || "outro";
+          r.docs[dt] = (r.docs[dt] ?? 0) + 1;
+        }
+      }
+      setReport([...map.values()].sort((a, b) => b.exports - a.exports || b.logins - a.logins));
+    }
+    setReportLoading(false);
   };
 
   const updateStatus = async (id: string, status: "approved" | "blocked") => {
@@ -110,7 +149,7 @@ const Admin = () => {
             </div>
             <div>
               <h1 className="text-2xl font-bold">Painel Admin</h1>
-              <p className="text-sm text-muted-foreground">Controle de Acesso – Sistema BYD IESA</p>
+              <p className="text-sm text-muted-foreground">Controle de Acesso – Automatiza DOC IESA BYD / Denza</p>
             </div>
           </div>
           <Button variant="outline" size="sm" onClick={() => navigate("/modelos")}>
@@ -208,6 +247,52 @@ const Admin = () => {
                         )}
                       </Button>
                     </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </CardContent>
+        </Card>
+
+        {/* Relatório de uso por login */}
+        <Card className="bg-card/60 border-border/50">
+          <CardHeader className="flex flex-row items-center justify-between pb-4">
+            <div>
+              <CardTitle className="flex items-center gap-2"><BarChart3 className="h-5 w-5" /> Acessos por login</CardTitle>
+              <CardDescription>Logins e documentos exportados no mês</CardDescription>
+            </div>
+            <div className="flex items-center gap-2">
+              <Input
+                type="month"
+                value={reportMonth}
+                onChange={(e) => { setReportMonth(e.target.value); if (e.target.value) fetchReport(e.target.value); }}
+                className="w-auto"
+              />
+              <Button variant="outline" size="sm" onClick={() => fetchReport(reportMonth)} disabled={reportLoading}>
+                {reportLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : "Atualizar"}
+              </Button>
+            </div>
+          </CardHeader>
+          <CardContent>
+            {reportLoading ? (
+              <div className="flex justify-center py-10"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>
+            ) : !report || report.length === 0 ? (
+              <p className="text-center py-10 text-muted-foreground">Sem registros neste mês.</p>
+            ) : (
+              <div className="space-y-3">
+                {report.map((r) => (
+                  <div key={r.email} className="p-4 rounded-lg bg-background/50 border border-border/40">
+                    <p className="font-medium text-sm truncate">{r.email}</p>
+                    <p className="text-xs text-muted-foreground mt-1">
+                      {r.logins} acesso(s) · {r.exports} documento(s) exportado(s)
+                    </p>
+                    {Object.keys(r.docs).length > 0 && (
+                      <div className="flex flex-wrap gap-1 mt-2">
+                        {Object.entries(r.docs).map(([dt, n]) => (
+                          <Badge key={dt} variant="outline" className="text-xs">{dt} ×{n}</Badge>
+                        ))}
+                      </div>
+                    )}
                   </div>
                 ))}
               </div>
