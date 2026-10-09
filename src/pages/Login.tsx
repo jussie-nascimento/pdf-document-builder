@@ -216,7 +216,7 @@ const Login = () => {
               </div>
               <CardTitle className="text-2xl font-bold tracking-tight">Portal Exclusivo</CardTitle>
               <CardDescription className="text-muted-foreground">
-                Sistema de Documentação Venda Direta
+                Automatiza DOC IESA BYD / Denza
               </CardDescription>
             </CardHeader>
             <CardContent>
