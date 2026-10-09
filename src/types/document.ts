@@ -19,6 +19,7 @@ export const newVehicleSchema = z.object({
   modelo: z.string().optional(),
   chassi: z.string().optional(),
   cor: z.string().optional(),
+  placa: z.string().optional(),
   anoFabricacao: z.string().optional(),
   anoModelo: z.string().optional(),
   valorVenda: z.string().optional(),
@@ -76,6 +77,7 @@ export type DocumentType =
   | "termo_responsabilidade_avalista"
   | "procuracao_usado"
   | "procuracao_0km"
+  | "procuracao_0km_emplacado"
   | "coaf"
   | "comprovante_residencia_detran";
 
@@ -84,6 +86,7 @@ export const documentLabels: Record<DocumentType, string> = {
   termo_responsabilidade_avalista: "Termo de Responsabilidade com Avalista",
   procuracao_usado: "Procuração Veículo Usado",
   procuracao_0km: "Procuração 0KM",
+  procuracao_0km_emplacado: "Procuração 0KM Emplacado",
   coaf: "COAF - Autodeclaração",
   comprovante_residencia_detran: "Comprovante de Residência DETRAN",
 };
