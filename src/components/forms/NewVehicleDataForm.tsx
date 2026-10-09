@@ -15,6 +15,7 @@ const NewVehicleDataForm = ({ form }: Props) => {
     { name: "veiculoNovo.modelo" as const, label: "Modelo" },
     { name: "veiculoNovo.chassi" as const, label: "Chassi" },
     { name: "veiculoNovo.cor" as const, label: "Cor" },
+    { name: "veiculoNovo.placa" as const, label: "Placa" },
     { name: "veiculoNovo.anoFabricacao" as const, label: "Ano Fabricação" },
     { name: "veiculoNovo.anoModelo" as const, label: "Ano Modelo" },
     { name: "veiculoNovo.valorVenda" as const, label: "Valor de Venda (R$)" },
