@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
-import { Loader2, ShieldCheck, CheckCircle, XCircle, Clock, LogOut } from "lucide-react";
+import { Loader2, ShieldCheck, CheckCircle, XCircle, Clock, LogOut, FileText } from "lucide-react";
 
 type AccessRequest = {
   id: string;
@@ -113,6 +113,9 @@ const Admin = () => {
               <p className="text-sm text-muted-foreground">Controle de Acesso – Sistema BYD IESA</p>
             </div>
           </div>
+          <Button variant="outline" size="sm" onClick={() => navigate("/modelos")}>
+            <FileText className="h-4 w-4 mr-1" /> Textos
+          </Button>
           <Button
             variant="ghost"
             size="icon"
