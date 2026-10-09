@@ -26,6 +26,14 @@ const DOCS: DocDef[] = [
     ],
   },
   {
+    type: "procuracao_0km_emplacado",
+    label: "Procuração 0KM Emplacado",
+    fields: [
+      { key: "transferencia", label: "Transferência no CRVA/Detran", hint: `Variáveis: ${VARS_BUYER_VEHICLE} {{valor}} {{valorExtenso}}` },
+      { key: "causa_propria", label: "Causa própria (Art. 685)", hint: "Texto livre" },
+    ],
+  },
+  {
     type: "termo_responsabilidade",
     label: "Termo de Responsabilidade (simples e com avalista)",
     fields: [
