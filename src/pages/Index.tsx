@@ -115,7 +115,7 @@ const Index = () => {
           <div className="flex items-center gap-4">
             <img src="/LOGO_IESA.jpg" alt="BYD IESA Logo" className="h-12 object-contain rounded bg-white p-1" />
             <div className="flex flex-col items-center sm:items-start">
-              <h1 className="text-2xl font-bold bg-gradient-to-r from-primary to-blue-300 bg-clip-text text-transparent">Sistema de Documentação Venda Direta BYD</h1>
+              <h1 className="text-2xl font-bold bg-gradient-to-r from-primary to-blue-300 bg-clip-text text-transparent">Automatiza DOC IESA BYD / Denza</h1>
               <span className="text-xs text-muted-foreground uppercase tracking-wider font-semibold">BYD IESA</span>
             </div>
           </div>
