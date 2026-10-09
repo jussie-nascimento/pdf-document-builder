@@ -14,6 +14,7 @@ const allDocs: DocumentType[] = [
   "termo_responsabilidade_avalista",
   "procuracao_usado",
   "procuracao_0km",
+  "procuracao_0km_emplacado",
   "coaf",
   "comprovante_residencia_detran",
 ];
