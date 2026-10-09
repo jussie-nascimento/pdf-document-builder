@@ -30,6 +30,7 @@ const PdfUploader = ({ onDataExtracted, importMode, onImportModeChange }: Props)
   const [files, setFiles] = useState<File[]>([]);
   const [loading, setLoading] = useState(false);
   const [lastResult, setLastResult] = useState<ExtractionResult | null>(null);
+  const [statusMsg, setStatusMsg] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
 
@@ -63,6 +64,7 @@ const PdfUploader = ({ onDataExtracted, importMode, onImportModeChange }: Props)
       let buyerName: string | undefined;
       let ownerFields: Record<string, string> = {};
       let buyerFields: Record<string, string> = {};
+      let cnhRg: string | undefined;
 
       for (const file of files) {
         const base64 = await fileToBase64(file);
@@ -89,7 +91,21 @@ const PdfUploader = ({ onDataExtracted, importMode, onImportModeChange }: Props)
           if (personName) buyerName = personName;
         } else if (kind === "nota_fiscal_byd") {
           for (const [k, v] of Object.entries(fields)) if (v) merged[k] = v;
+        } else if (kind === "cnh") {
+          // Da CNH importa-se APENAS o RG do comprador — demais campos são ignorados.
+          if (fields["proprietario.rg"]) {
+            cnhRg = cnhRg ?? fields["proprietario.rg"];
+          } else {
+            const rg = await ocrCnhFile(file, setStatusMsg);
+            if (rg) cnhRg = cnhRg ?? rg;
+          }
         } else {
+          // PDF de imagem (ex. CNH-e escaneada): tenta OCR para extrair o RG.
+          const raw = typeof data?.rawText === "string" ? data.rawText : "";
+          if (raw.trim().length < 1000) {
+            const rg = await ocrCnhFile(file, setStatusMsg);
+            if (rg) cnhRg = cnhRg ?? rg;
+          }
           for (const [k, v] of Object.entries(fields)) if (v) merged[k] = v;
         }
       }
@@ -138,6 +154,10 @@ const PdfUploader = ({ onDataExtracted, importMode, onImportModeChange }: Props)
           if (k.startsWith("proprietario.") && v && !mergedResult[k]) mergedResult[k] = v;
       }
 
+      // RG da CNH — sempre no COMPRADOR, só este campo (aplicado por último:
+      // não vai para o avalista e tem prioridade sobre qualquer outro RG).
+      if (cnhRg) mergedResult["proprietario.rg"] = cnhRg;
+
       if (mergedResult["proprietario.nome"]) mergedResult["coaf.nomeRazaoSocial"] = mergedResult["proprietario.nome"];
       if (mergedResult["proprietario.cpfCnpj"]) mergedResult["coaf.cpfCnpj"] = mergedResult["proprietario.cpfCnpj"];
 
@@ -149,15 +169,18 @@ const PdfUploader = ({ onDataExtracted, importMode, onImportModeChange }: Props)
 
       toast({
         title: "Dados extraídos com sucesso!",
-        description: requiresAvalista
-          ? `Nomes divergentes detectados — usar Termo com Avalista.`
-          : `${files.length} arquivo(s) processado(s).`,
+        description:
+          (requiresAvalista
+            ? `Nomes divergentes detectados — usar Termo com Avalista.`
+            : `${files.length} arquivo(s) processado(s).`) +
+          (cnhRg ? ` RG da CNH: ${cnhRg}.` : ""),
       });
     } catch (err) {
       console.error(err);
       toast({ title: "Erro na extração", description: "Não foi possível extrair dados do PDF.", variant: "destructive" });
     } finally {
       setLoading(false);
+      setStatusMsg(null);
     }
   };
 
@@ -168,6 +191,7 @@ const PdfUploader = ({ onDataExtracted, importMode, onImportModeChange }: Props)
     try {
       let nbsFields: Record<string, string> = {};
       let ownerFields: Record<string, string> = {};
+      let cnhRg: string | undefined;
       let ownerName: string | undefined;
       let buyerName: string | undefined;
 
@@ -195,7 +219,21 @@ const PdfUploader = ({ onDataExtracted, importMode, onImportModeChange }: Props)
           // PDF de Avaliação do Veículo Usado / CRLV
           ownerFields = { ...ownerFields, ...fields };
           if (personName) ownerName = personName;
+        } else if (kind === "cnh") {
+          // Da CNH importa-se APENAS o RG do comprador — demais campos são ignorados.
+          if (fields["proprietario.rg"]) {
+            cnhRg = cnhRg ?? fields["proprietario.rg"];
+          } else {
+            const rg = await ocrCnhFile(file, setStatusMsg);
+            if (rg) cnhRg = cnhRg ?? rg;
+          }
         } else {
+          // PDF de imagem (ex. CNH-e escaneada): tenta OCR para extrair o RG.
+          const raw = typeof data?.rawText === "string" ? data.rawText : "";
+          if (raw.trim().length < 1000) {
+            const rg = await ocrCnhFile(file, setStatusMsg);
+            if (rg) cnhRg = cnhRg ?? rg;
+          }
           for (const [k, v] of Object.entries(fields)) if (v && !nbsFields[k]) nbsFields[k] = v;
         }
       }
@@ -235,6 +273,10 @@ const PdfUploader = ({ onDataExtracted, importMode, onImportModeChange }: Props)
         }
       }
 
+      // RG da CNH — sempre no COMPRADOR, só este campo (aplicado por último:
+      // não vai para o avalista e tem prioridade sobre qualquer outro RG).
+      if (cnhRg) mergedResult["proprietario.rg"] = cnhRg;
+
       // Preenchimento automático do COAF com base no Comprador
       if (mergedResult["proprietario.nome"]) mergedResult["coaf.nomeRazaoSocial"] = mergedResult["proprietario.nome"];
       if (mergedResult["proprietario.cpfCnpj"]) mergedResult["coaf.cpfCnpj"] = mergedResult["proprietario.cpfCnpj"];
@@ -250,15 +292,18 @@ const PdfUploader = ({ onDataExtracted, importMode, onImportModeChange }: Props)
 
       toast({
         title: "Proposta NBS extraída!",
-        description: requiresAvalista
-          ? `Nomes divergentes detectados — usar Termo com Avalista.`
-          : `${files.length} arquivo(s) processado(s).`,
+        description:
+          (requiresAvalista
+            ? `Nomes divergentes detectados — usar Termo com Avalista.`
+            : `${files.length} arquivo(s) processado(s).`) +
+          (cnhRg ? ` RG da CNH: ${cnhRg}.` : ""),
       });
     } catch (err) {
       console.error(err);
       toast({ title: "Erro na extração NBS", description: "Não foi possível extrair dados da proposta NBS.", variant: "destructive" });
     } finally {
       setLoading(false);
+      setStatusMsg(null);
     }
   };
 
@@ -296,7 +341,7 @@ const PdfUploader = ({ onDataExtracted, importMode, onImportModeChange }: Props)
                 )}
               </div>
               <p className="text-xs text-muted-foreground">
-                Importa do Pedido de Vendas + CRLV/Avaliação do Usado + Nota Fiscal BYD.
+                Importa do Pedido de Vendas + CRLV/Avaliação do Usado + Nota Fiscal BYD + CNH (RG do comprador).
               </p>
             </button>
 
@@ -318,7 +363,7 @@ const PdfUploader = ({ onDataExtracted, importMode, onImportModeChange }: Props)
                 )}
               </div>
               <p className="text-xs text-muted-foreground">
-                Importa Proposta NBS (Comprador e Veículo Novo) + Avaliação/CRLV do Usado.
+                Importa Proposta NBS (Comprador e Veículo Novo) + Avaliação/CRLV do Usado + CNH (RG do comprador).
               </p>
             </button>
           </div>
@@ -344,6 +389,10 @@ const PdfUploader = ({ onDataExtracted, importMode, onImportModeChange }: Props)
             <Upload className="h-10 w-10 mx-auto text-muted-foreground mb-3" />
             <p className="text-sm text-muted-foreground mb-2">
               Arraste os PDFs aqui ou clique para selecionar (múltiplos arquivos)
+            </p>
+            <p className="text-xs text-muted-foreground mb-2">
+              A CNH importa <strong>somente o RG</strong> do comprador (campo 4a — DOC IDENTIDADE).
+              CNH escaneada passa por OCR e pode levar cerca de 1 minuto.
             </p>
             <input
               ref={fileInputRef}
@@ -381,7 +430,7 @@ const PdfUploader = ({ onDataExtracted, importMode, onImportModeChange }: Props)
                 {loading ? (
                   <>
                     <Loader2 className="h-4 w-4 animate-spin mr-2 inline-block" />
-                    <span>{importMode === "varejo_nbs" ? "Importando NBS..." : "Extraindo dados..."}</span>
+                    <span>{statusMsg ?? (importMode === "varejo_nbs" ? "Importando NBS..." : "Extraindo dados...")}</span>
                   </>
                 ) : (
                   <span>
@@ -409,6 +458,87 @@ const PdfUploader = ({ onDataExtracted, importMode, onImportModeChange }: Props)
     </div>
   );
 };
+
+// ─── CNH (RG do comprador) via OCR ──────────────────────────────────────────
+// A CNH-e / CNH escaneada é PDF de IMAGEM: o extrator de texto (unpdf) não lê
+// nada útil. Por isso renderizamos as páginas com pdf.js e rodamos Tesseract
+// (idioma por). Da CNH importa-se APENAS o RG (campo 4a "DOC IDENTIDADE /
+// ÓRG EMISSOR / UF", ex. "106825731 SJS RS" → "106825731").
+
+const CNH_OCR_MAX_PAGES = 3;
+const CNH_OCR_SCALE = 5;
+
+/** Extrai só os dígitos do RG de um texto (edge ou OCR) da CNH. */
+function parseRgFromCnhText(text: string): string | undefined {
+  const t = text.toUpperCase();
+  // 1. "DOC IDENTIDADE ... NNNNNNN ORG UF" (nº colado ou espaçado)
+  let m = t.match(/DOC\.?\s*IDENTIDADE[\s\S]{0,100}?(\d{7,11})\s*[A-Z]{2,6}\s*[A-Z]{2}\b/);
+  if (m) return m[1].replace(/\D/g, "");
+  // 2. "DOC IDENTIDADE ..." + número por perto
+  m = t.match(/DOC\.?\s*IDENTIDADE[\s\S]{0,120}?(\d{7,11})/);
+  if (m) return m[1].replace(/\D/g, "");
+  // 3. Linha típica "NNNNNNNNN ORG UF" isolada
+  m = t.match(
+    /\b(\d{8,11})\s*(?:SSP|SJS|SDS|SESP|DETRAN|IFP|IPC|DIC|SSP\/|SJS\/)?\s*(?:RS|SP|RJ|MG|PR|SC|BA|GO|PE|CE|PA|MA|MT|MS|ES|PB|RN|AL|PI|SE|RO|TO|AC|AM|RR|AP|DF)\b/
+  );
+  if (m) return m[1].replace(/\D/g, "");
+  return undefined;
+}
+
+/** Renderiza as primeiras páginas do PDF e faz OCR (texto concatenado). */
+async function ocrPdfToText(
+  file: File,
+  setStatus: (s: string | null) => void
+): Promise<string> {
+  const pdfjsLib = await import("pdfjs-dist");
+  pdfjsLib.GlobalWorkerOptions.workerSrc = `https://cdn.jsdelivr.net/npm/pdfjs-dist@${pdfjsLib.version}/build/pdf.worker.min.mjs`;
+  const { createWorker } = await import("tesseract.js");
+
+  const buf = await file.arrayBuffer();
+  const pdf = await pdfjsLib.getDocument({ data: buf }).promise;
+  const n = Math.min(pdf.numPages, CNH_OCR_MAX_PAGES);
+
+  const worker = await createWorker("por");
+  let out = "";
+  try {
+    for (let i = 1; i <= n; i++) {
+      setStatus(`Lendo CNH via OCR (página ${i}/${n})...`);
+      const page = await pdf.getPage(i);
+      const viewport = page.getViewport({ scale: CNH_OCR_SCALE });
+      const canvas = document.createElement("canvas");
+      canvas.width = Math.floor(viewport.width);
+      canvas.height = Math.floor(viewport.height);
+      const ctx = canvas.getContext("2d");
+      if (!ctx) continue;
+      await page.render({ canvasContext: ctx, viewport }).promise;
+      const { data } = await worker.recognize(canvas);
+      out += "\n" + (data?.text ?? "");
+      console.log(`=== OCR CNH p${i} ===`);
+      console.log(data?.text);
+    }
+  } finally {
+    await worker.terminate();
+  }
+  return out;
+}
+
+/** Roda OCR no arquivo e devolve o RG, ou undefined (nunca quebra a extração). */
+async function ocrCnhFile(
+  file: File,
+  setStatus: (s: string | null) => void
+): Promise<string | undefined> {
+  try {
+    const ocrText = await ocrPdfToText(file, setStatus);
+    const rg = parseRgFromCnhText(ocrText);
+    if (rg) console.log("RG da CNH (OCR):", rg);
+    return rg;
+  } catch (e) {
+    console.warn("OCR da CNH falhou:", e);
+    return undefined;
+  } finally {
+    setStatus(null);
+  }
+}
 
 // ─── Helpers ────────────────────────────────────────────────────────────────
 
@@ -449,3 +579,4 @@ function combineAddressFields(fields: Record<string, string>) {
 }
 
 export default PdfUploader;
+
