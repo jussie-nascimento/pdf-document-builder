@@ -215,6 +215,14 @@ const PdfUploader = ({ onDataExtracted, importMode, onImportModeChange }: Props)
         if (kind === "proposta_nbs") {
           for (const [k, v] of Object.entries(fields)) if (v) nbsFields[k] = v;
           if (fields["proprietario.nome"]) buyerName = fields["proprietario.nome"];
+          // CNH escaneada com edge ainda não atualizada cai aqui (a edge antiga
+          // classificava tudo como proposta_nbs no varejo): texto quase vazio e
+          // sem nome de comprador → tenta OCR do RG.
+          const rawP = typeof data?.rawText === "string" ? data.rawText : "";
+          if (!fields["proprietario.nome"] && rawP.trim().length < 1000) {
+            const rg = await ocrCnhFile(file, setStatusMsg);
+            if (rg) cnhRg = cnhRg ?? rg;
+          }
         } else if (kind === "veiculo") {
           // PDF de Avaliação do Veículo Usado / CRLV
           ownerFields = { ...ownerFields, ...fields };
@@ -579,4 +587,3 @@ function combineAddressFields(fields: Record<string, string>) {
 }
 
 export default PdfUploader;
-
