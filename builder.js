@@ -20,8 +20,10 @@ interface FormDataInput {
   veiculo: any;
   proprietario: any;
   avalista: any;
+  concessionaria: any;
   coaf: any;
   data: string;
+  local: string;
   documentType: string;
 }
 
@@ -124,57 +126,74 @@ function generateCoaf(d) {
   };
 }
 
-function generateTermoResponsabilidade(d) {
-  const p = d.proprietario || {};
+function generateTermoResponsabilidade(d, docType) {
+  const cliente = d.proprietario || {};
   const v = d.veiculo || {};
-  const a = d.avalista || {};
-  const isAvalista = !!a.nome;
-  
+  const c = d.concessionaria || {};
+  const propRaw = d.avalista || {};
+  const isDistinto = docType === "termo_responsabilidade_avalista" && !!(propRaw.nome && String(propRaw.nome).trim());
+  const prop = isDistinto ? propRaw : cliente;
+
+  const conc = {
+    razao: c.razaoSocial || "TRINITA VEÍCULOS LTDA",
+    cnpj: c.cnpj || "11.475.046/0001-83",
+    endereco: c.endereco || "Rua Edu Chaves, 390 São João - CEP 90240-620",
+    cidadeUf: c.cidadeUf || "Porto Alegre / RS",
+  };
+
+  const marcaModelo = v.marcaModelo || [v.marca, v.modelo].filter(Boolean).join(" ");
+  const ano = v.ano || [v.anoFabricacao, v.anoModelo].filter(Boolean).join("/");
+  const localStr = d.local || "__________________";
+  const dataStr = d.data || "____/____/________";
+
   return {
     content: [
       getHeaderParams("TERMO DE RESPONSABILIDADE"),
-      { text: isAvalista ? "TERMO DE RESPONSABILIDADE SOBRE VEÍCULO DADO EM PAGAMENTO COM AVALISTA E INSTRUMENTO DE MANDATO" : "TERMO DE RESPONSABILIDADE SOBRE VEÍCULO DADO EM PAGAMENTO E INSTRUMENTO DE MANDATO", style: 'header', alignment: 'center', margin: [0,0,0,20] },
-      
-      { text: "VEÍCULO:", bold: true },
-      { text: \`Placas/UF: \${v.placa || "_____"}   RENAVAM: \${v.renavam || "_____________"}   Chassi: \${v.chassi || "__________________"}\` },
-      { text: \`Marca: \${v.marca || "_____"}   Modelo: \${v.modelo || "_____________"}   Ano/Modelo: \${v.anoFabricacao || ""}/\${v.anoModelo || ""}   Cor: \${v.cor || "____"}\` },
-      { text: \`Quilometragem: \${v.km || "_____"}\`, margin: [0,0,0,15] },
-      
-      { text: "PROPRIETÁRIO:", bold: true },
-      { text: \`Nome: \${p.nome || "___________________________________________"}\` },
-      { text: \`Endereço: \${p.endereco || "______________________"}\` },
-      { text: \`Cidade: \${p.cidade || "___________"} - \${p.estado || "___"}   Bairro: \${p.bairro || "_______"}   CEP: \${p.cep || "_______"}\` },
-      { text: \`Nacionalidade: \${p.nacionalidade || "_________"}   Estado civil: \${p.estadoCivil || "_____"}\` },
-      { text: \`Identidade/RG: \${p.rg || "__________"}   CPF/CNPJ: \${p.cpfCnpj || "_______________"}\` },
-      { text: \`Valor de avaliação: R$ \${v.valorAvaliacao || "___________"}\`, margin: [0,0,0,15] },
-      
-      ...(isAvalista ? [
-        { text: "AVALISTA:", bold: true },
-        { text: \`Nome: \${a.nome || "___________________________________________"}\` },
-        { text: \`Endereço: \${a.endereco || "______________________"}\` },
-        { text: \`Cidade: \${a.cidade || "___________"} - \${a.estado || "___"}   Bairro: \${a.bairro || "_______"}   CEP: \${a.cep || "_______"}\` },
-        { text: \`Nacionalidade: \${a.nacionalidade || "_________"}   Estado civil: \${a.estadoCivil || "_____"}\` },
-        { text: \`Identidade/RG: \${a.rg || "__________"}   CPF/CNPJ: \${a.cpfCnpj || "_______________"}\`, margin: [0,0,0,15] },
-      ] : []),
-      
-      { text: \`Pelo presente instrumento particular, na melhor forma de direito, o proprietário, acima nominado, assume total e geral responsabilidade pela entrega do veículo supracitado nas mesmas condições verificadas no ato da avaliação por quaisquer ônus, dívidas, ações ou encargos e gravames sobre o referido veículo e que eventualmente venha a diminuir sua avaliação ou obste sua alienação ou transferência. Neste sentido, o proprietário autoriza e outorga, pelo prazo de 12 meses, de forma irrevogável e irretratável à TRINITA VEÍCULOS LTDA, com sede na Rua Edu Chaves, 390 São João – CEP 90240-620 - Porto Alegre / RS, inscrita no CNPJ sob o nº 11.475.046/0001-83, para, caso haja algum tipo de impedimento ou restrição sobre o veículo entregue neste ato como dação em pagamento, a sacar Letra de Câmbio, de acordo com o valor correspondente ao valor da avaliação do veículo praticado no negócio com a concessionária e acrescido de juros legais e atualização monetária (IGPM), mediante prévia notificação e informação de disponibilidade para devolução do veículo, comprovadamente impedido de alienação ou transferência. Outrossim, o Proprietário assume total e geral responsabilidade pela entrega do veículo supracitado nas mesmas condições verificadas no ato da avaliação.\`, alignment: 'justify', margin: [0,0,0,10] },
-      
-      { text: "Fica estabelecido que o valor ofertado pela compra do veículo está condicionado a inocorrência de qualquer avaria ou alteração das condições apresentadas na data da avaliação, resguardando-se a TRINITA no direito de cancelar a proposta nesta circunstância, bem como fica o proprietário ciente que em caso de desfazimento do negócio, arcará com as despesas administrativas decorrentes.", alignment: 'justify', margin: [0,0,0,30] },
-      
+      { text: "TERMO DE RESPONSABILIDADE SOBRE VEÍCULO DADO EM PAGAMENTO", style: 'header', alignment: 'center', margin: [0, 0, 0, 12] },
+
+      { text: "CONCESSIONÁRIA RECEBEDORA", bold: true, margin: [0, 0, 0, 2] },
+      { text: [{ text: "Razão social: ", bold: true }, (conc.razao || "________________________________"), { text: "   CNPJ: ", bold: true }, (conc.cnpj || "__________________")] },
+      { text: [{ text: "Endereço: ", bold: true }, (conc.endereco || "__________________________________________________"), { text: "   Cidade/UF: ", bold: true }, (conc.cidadeUf || "__________________")], margin: [0, 0, 0, 8] },
+
+      { text: "VEÍCULO", bold: true, margin: [0, 0, 0, 2] },
+      { text: [{ text: "Placa: ", bold: true }, (v.placa || "__________"), { text: "   RENAVAM: ", bold: true }, (v.renavam || "___________"), { text: "   Chassi: ", bold: true }, (v.chassi || "_________________")] },
+      { text: [{ text: "Marca/modelo: ", bold: true }, (marcaModelo || "________________________"), { text: "   Ano: ", bold: true }, (ano || "_________"), { text: "   Cor: ", bold: true }, (v.cor || "__________"), { text: "   Km: ", bold: true }, (v.km || "__________")], margin: [0, 0, 0, 8] },
+
+      { text: "CLIENTE/ADQUIRENTE", bold: true, margin: [0, 0, 0, 2] },
+      { text: [{ text: "Nome: ", bold: true }, (cliente.nome || "___________________________________________"), { text: "   CPF/CNPJ: ", bold: true }, (cliente.cpfCnpj || "__________________")], margin: [0, 0, 0, 8] },
+
+      { text: "PROPRIETÁRIO DO USADO (preencher somente se distinto do cliente)", bold: true, margin: [0, 0, 0, 2] },
+      { text: isDistinto
+        ? [{ text: "Nome: ", bold: true }, (prop.nome || "___________________________________________"), { text: "   CPF/CNPJ: ", bold: true }, (prop.cpfCnpj || "__________________")]
+        : [{ text: "Nome: ", bold: true }, "--- MESMO QUE CLIENTE/ADQUIRENTE ---   CPF/CNPJ: ---"], margin: [0, 0, 0, 8] },
+
+      { text: "Pelo presente instrumento, o PROPRIETÁRIO DO VEÍCULO, juntamente com o CLIENTE/ADQUIRENTE quando forem pessoas distintas, entrega o veículo acima identificado a CONCESSIONÁRIA RECEBEDORA, qualificada acima, como parte do pagamento da negociação, assumindo as obrigações abaixo.", alignment: 'justify', margin: [0, 0, 0, 6] },
+
+      { text: [{ text: "1. RESPONSABILIDADE PELO VEÍCULO. ", bold: true }, "O PROPRIETÁRIO declara ser legítimo titular e que o veículo está livre de ônus ou restrições não informados, respondendo por multas, tributos, débitos, gravames, bloqueios, ações, direitos de terceiros e demais ônus decorrentes de fatos anteriores à entrega, ainda que identificados ou cobrados posteriormente, obrigando-se a regularizá-los e a ressarcir integralmente a CONCESSIONÁRIA pelos valores e prejuízos suportados."], alignment: 'justify', margin: [0, 0, 0, 5] },
+
+      { text: [{ text: "2. CONDIÇÕES E AVALIAÇÃO. ", bold: true }, "O valor atribuído considera o estado de conservação, funcionamento, características e quilometragem apresentados na avaliação. O veículo deverá ser entregue nas mesmas condições, ressalvado o desgaste normal. A constatação de avaria, defeito preexistente não informado, divergência de quilometragem, restrição ou circunstância anterior à entrega que reduza seu valor ou prejudique sua transferência ou comercialização autoriza a CONCESSIONARIA a reavaliá-lo ou cancelar sua aceitação como parte do pagamento."], alignment: 'justify', margin: [0, 0, 0, 5] },
+
+      { text: [{ text: "3. DESFAZIMENTO, RESSARCIMENTO E SOLIDARIEDADE. ", bold: true }, "Havendo impedimento à transferência ou comercialização por fato anterior à entrega, o PROPRIETÁRIO será notificado para regularização. Não solucionado, a CONCESSIONÁRIA poderá desfazer a aceitação, disponibilizar o veículo para devolução e exigir a restituição do valor atribuído na negociação, acrescido de atualização monetária, encargos legais e despesas comprovadas. Sendo CLIENTE e PROPRIETÁRIO pessoas distintas, ambos respondem solidariamente pelas obrigações deste Termo."], alignment: 'justify', margin: [0, 0, 0, 5] },
+
+      { text: [{ text: "4. MANDATO E LETRA DE CÂMBIO. ", bold: true }, "Para garantia e cobrança das obrigações deste Termo, o CLIENTE/ADQUIRENTE e, quando distinto, o PROPRIETÁRIO outorgam à CONCESSIONÁRIA RECEBEDORA mandato com poderes específicos para sacar Letra de Câmbio contra qualquer deles ou ambos, limitada ao valor necessário ao cumprimento das obrigações assumidas, inclusive restituição do valor atribuído ao veículo, débitos, ônus, prejuízos e despesas de regularização ou desfazimento, com atualização monetária e encargos legais. O mandato somente poderá ser exercido em caso de inadimplemento, mediante prévia notificação para pagamento ou regularização."], alignment: 'justify', margin: [0, 0, 0, 5] },
+
+      { text: "O CLIENTE e, quando distinto, o PROPRIETÁRIO declaram que leram, compreenderam e concordam com este instrumento e que são verdadeiras as informações prestadas.", alignment: 'justify', margin: [0, 0, 0, 8] },
+
+      { text: [{ text: "Local: ", bold: true }, localStr, { text: "   Data: ", bold: true }, dataStr], margin: [0, 0, 0, 18] },
+
       {
-        columns: isAvalista ? [
-          { text: "_____________________________________\nProprietário\nASSINAR GOV.BR", alignment: 'center' },
-          { text: "_____________________________________\nAvalista\nASSINAR GOV.BR", alignment: 'center' }
-        ] : [
-          { text: "_____________________________________\nProprietário\nASSINAR GOV.BR", alignment: 'center' }
+        columns: [
+          { stack: [{ text: "___________________________________", alignment: 'center' }, { text: cliente.nome || "CLIENTE/ADQUIRENTE", alignment: 'center', bold: true, fontSize: 8 }, { text: "CLIENTE/ADQUIRENTE\nASSINAR GOV.BR", alignment: 'center', fontSize: 8 }], width: '*' },
+          { stack: [{ text: "___________________________________", alignment: 'center' }, { text: (isDistinto ? prop.nome : cliente.nome) || "PROPRIETÁRIO DO VEÍCULO", alignment: 'center', bold: true, fontSize: 8 }, { text: "PROPRIETÁRIO DO VEÍCULO\nASSINAR GOV.BR", alignment: 'center', fontSize: 8 }], width: '*' },
+          { stack: [{ text: "___________________________________", alignment: 'center' }, { text: conc.razao, alignment: 'center', bold: true, fontSize: 8 }, { text: "CONCESSIONÁRIA RECEBEDORA", alignment: 'center', fontSize: 8 }], width: '*' },
         ],
-        margin: [0,0,0,40]
+        margin: [0, 0, 0, 10]
       },
-      
-      { text: "TRINITA VEÍCULOS LTDA\nRua Edu Chaves, 390 São João – CEP 90240-620 Fone: (51) 3025-3080\nPorto Alegre – RS", fontSize: 9, alignment: 'center' }
+
+      { text: conc.razao + "\n" + conc.endereco + " - " + conc.cidadeUf, fontSize: 8, alignment: 'center', color: '#555555' }
     ],
-    defaultStyle: { fontSize: 10, alignment: 'justify' },
-    styles: { header: { fontSize: 13, bold: true } }
+    defaultStyle: { fontSize: 9, alignment: 'justify' },
+    styles: { header: { fontSize: 12, bold: true } }
   };
 }
 
