@@ -130,23 +130,15 @@ const PdfUploader = ({ onDataExtracted, importMode, onImportModeChange }: Props)
         if (k.startsWith("veiculo.") && v && !mergedResult[k]) mergedResult[k] = v;
 
       if (requiresAvalista) {
+        // CLIENTE/ADQUIRENTE = comprador do veículo novo (buyerFields)
         for (const [k, v] of Object.entries(buyerFields))
           if (k.startsWith("proprietario.") && v) mergedResult[k] = v;
 
-        mergedResult["avalista.cpfCnpj"] = "";
-
+        // PROPRIETÁRIO DO USADO = outro nome vindo da avaliação do usado (ownerFields)
+        // Modelo 2026: só Nome + CPF/CNPJ vão para o Termo; não copiar endereço do comprador.
         if (ownerFields["proprietario.nome"]) mergedResult["avalista.nome"] = ownerFields["proprietario.nome"];
-        if (ownerFields["proprietario.telefone"]) mergedResult["avalista.telefone"] = ownerFields["proprietario.telefone"];
-        if (ownerFields["proprietario.email"]) mergedResult["avalista.email"] = ownerFields["proprietario.email"];
-
-        for (const [k, v] of Object.entries(mergedResult)) {
-          if (k.startsWith("proprietario.") && v) {
-            const field = k.replace("proprietario.", "");
-            if (!["nome", "telefone", "email", "cpfCnpj"].includes(field)) {
-              mergedResult[`avalista.${field}`] = v;
-            }
-          }
-        }
+        if (ownerFields["proprietario.cpfCnpj"]) mergedResult["avalista.cpfCnpj"] = ownerFields["proprietario.cpfCnpj"];
+        if (ownerFields["proprietario.rg"]) mergedResult["avalista.rg"] = ownerFields["proprietario.rg"];
       } else {
         for (const [k, v] of Object.entries(ownerFields))
           if (k.startsWith("proprietario.") && v) mergedResult[k] = v;
@@ -171,7 +163,7 @@ const PdfUploader = ({ onDataExtracted, importMode, onImportModeChange }: Props)
         title: "Dados extraídos com sucesso!",
         description:
           (requiresAvalista
-            ? `Nomes divergentes detectados — usar Termo com Avalista.`
+            ? `Nomes divergentes detectados — usar Termo Dação 2026 (Cliente + Proprietário).`
             : `${files.length} arquivo(s) processado(s).`) +
           (cnhRg ? ` RG da CNH: ${cnhRg}.` : ""),
       });
@@ -266,19 +258,11 @@ const PdfUploader = ({ onDataExtracted, importMode, onImportModeChange }: Props)
       }
 
       if (requiresAvalista) {
-        mergedResult["avalista.cpfCnpj"] = "";
+        // PROPRIETÁRIO DO USADO = outro nome vindo da avaliação do usado (ownerFields).
+        // Modelo 2026: só Nome + CPF/CNPJ vão para o Termo; não copiar endereço do comprador.
         if (ownerFields["proprietario.nome"]) mergedResult["avalista.nome"] = ownerFields["proprietario.nome"];
-        if (ownerFields["proprietario.telefone"]) mergedResult["avalista.telefone"] = ownerFields["proprietario.telefone"];
-        if (ownerFields["proprietario.email"]) mergedResult["avalista.email"] = ownerFields["proprietario.email"];
-
-        for (const [k, v] of Object.entries(mergedResult)) {
-          if (k.startsWith("proprietario.") && v) {
-            const field = k.replace("proprietario.", "");
-            if (!["nome", "telefone", "email", "cpfCnpj"].includes(field)) {
-              mergedResult[`avalista.${field}`] = v;
-            }
-          }
-        }
+        if (ownerFields["proprietario.cpfCnpj"]) mergedResult["avalista.cpfCnpj"] = ownerFields["proprietario.cpfCnpj"];
+        if (ownerFields["proprietario.rg"]) mergedResult["avalista.rg"] = ownerFields["proprietario.rg"];
       }
 
       // RG da CNH — sempre no COMPRADOR, só este campo (aplicado por último:
@@ -302,7 +286,7 @@ const PdfUploader = ({ onDataExtracted, importMode, onImportModeChange }: Props)
         title: "Proposta NBS extraída!",
         description:
           (requiresAvalista
-            ? `Nomes divergentes detectados — usar Termo com Avalista.`
+            ? `Nomes divergentes detectados — usar Termo Dação 2026 (Cliente + Proprietário).`
             : `${files.length} arquivo(s) processado(s).`) +
           (cnhRg ? ` RG da CNH: ${cnhRg}.` : ""),
       });
@@ -457,7 +441,7 @@ const PdfUploader = ({ onDataExtracted, importMode, onImportModeChange }: Props)
               <AlertDescription>
                 <strong>Divergência de nomes detectada:</strong> proprietário do veículo
                 ({lastResult.ownerName}) é diferente do comprador ({lastResult.buyerName}).
-                O <em>Termo de Responsabilidade com Avalista</em> será selecionado automaticamente.
+                O <em>Termo Dação 2026 (Cliente + Proprietário distinto)</em> será selecionado automaticamente.
               </AlertDescription>
             </Alert>
           )}
