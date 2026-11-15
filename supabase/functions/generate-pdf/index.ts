@@ -188,37 +188,39 @@ function generateTermoResponsabilidade(d, docType) {
   return {
     content: [
       getHeaderParams("TERMO DE RESPONSABILIDADE"),
-      { text: "TERMO DE RESPONSABILIDADE SOBRE VEÍCULO DADO EM PAGAMENTO", style: 'header', alignment: 'center', margin: [0, 0, 0, 12] },
+      { text: "TERMO DE RESPONSABILIDADE SOBRE VEÍCULO DADO EM PAGAMENTO", style: 'header', alignment: 'center', margin: [0, 0, 0, 10] },
 
       { text: "CONCESSIONÁRIA RECEBEDORA", bold: true, margin: [0, 0, 0, 2] },
       { text: [{ text: "Razão social: ", bold: true }, (conc.razao || "________________________________"), { text: "   CNPJ: ", bold: true }, (conc.cnpj || "__________________")] },
-      { text: [{ text: "Endereço: ", bold: true }, (conc.endereco || "__________________________________________________"), { text: "   Cidade/UF: ", bold: true }, (conc.cidadeUf || "__________________")], margin: [0, 0, 0, 8] },
+      { text: [{ text: "Endereço: ", bold: true }, (conc.endereco || "__________________________________________________"), { text: "   Cidade/UF: ", bold: true }, (conc.cidadeUf || "__________________")], margin: [0, 0, 0, 6] },
 
       { text: "VEÍCULO", bold: true, margin: [0, 0, 0, 2] },
       { text: [{ text: "Placa: ", bold: true }, (v.placa || "__________"), { text: "   RENAVAM: ", bold: true }, (v.renavam || "___________"), { text: "   Chassi: ", bold: true }, (v.chassi || "_________________")] },
-      { text: [{ text: "Marca/modelo: ", bold: true }, (marcaModelo || "________________________"), { text: "   Ano: ", bold: true }, (ano || "_________"), { text: "   Cor: ", bold: true }, (v.cor || "__________"), { text: "   Km: ", bold: true }, (v.km || "__________")], margin: [0, 0, 0, 8] },
+      { text: [{ text: "Marca/modelo: ", bold: true }, (marcaModelo || "________________________"), { text: "   Ano: ", bold: true }, (ano || "_________"), { text: "   Cor: ", bold: true }, (v.cor || "__________"), { text: "   Km: ", bold: true }, (v.km || "__________")], margin: [0, 0, 0, 6] },
 
       { text: "CLIENTE/ADQUIRENTE", bold: true, margin: [0, 0, 0, 2] },
-      { text: [{ text: "Nome: ", bold: true }, (cliente.nome || "___________________________________________"), { text: "   CPF/CNPJ: ", bold: true }, (cliente.cpfCnpj || "__________________")], margin: [0, 0, 0, 8] },
+      { text: [{ text: "Nome: ", bold: true }, (cliente.nome || "___________________________________________"), { text: "   CPF/CNPJ: ", bold: true }, (cliente.cpfCnpj || "__________________")], margin: [0, 0, 0, 6] },
 
       { text: "PROPRIETÁRIO DO USADO (preencher somente se distinto do cliente)", bold: true, margin: [0, 0, 0, 2] },
       { text: isDistinto
         ? [{ text: "Nome: ", bold: true }, (prop.nome || "___________________________________________"), { text: "   CPF/CNPJ: ", bold: true }, (prop.cpfCnpj || "__________________")]
-        : [{ text: "Nome: ", bold: true }, "--- MESMO QUE CLIENTE/ADQUIRENTE ---   CPF/CNPJ: ---"], margin: [0, 0, 0, 8] },
+        : [{ text: "Nome: ", bold: true }, "___________________________________________", { text: "   CPF/CNPJ: ", bold: true }, "__________________"], margin: [0, 0, 0, 6] },
 
-      { text: "Pelo presente instrumento, o PROPRIETÁRIO DO VEÍCULO, juntamente com o CLIENTE/ADQUIRENTE quando forem pessoas distintas, entrega o veículo acima identificado a CONCESSIONÁRIA RECEBEDORA, qualificada acima, como parte do pagamento da negociação, assumindo as obrigações abaixo.", alignment: 'justify', margin: [0, 0, 0, 6] },
+      { text: "Pelo presente instrumento, o PROPRIETÁRIO DO VEÍCULO, juntamente com o CLIENTE/ADQUIRENTE quando forem pessoas distintas, entrega o veículo acima identificado à CONCESSIONÁRIA RECEBEDORA, qualificada acima, como parte do pagamento da negociação, assumindo as obrigações abaixo.", alignment: 'justify', margin: [0, 0, 0, 5] },
 
-      { text: [{ text: "1. RESPONSABILIDADE PELO VEÍCULO. ", bold: true }, "O PROPRIETÁRIO declara ser legítimo titular e que o veículo está livre de ônus ou restrições não informados, respondendo por multas, tributos, débitos, gravames, bloqueios, ações, direitos de terceiros e demais ônus decorrentes de fatos anteriores à entrega, ainda que identificados ou cobrados posteriormente, obrigando-se a regularizá-los e a ressarcir integralmente a CONCESSIONÁRIA pelos valores e prejuízos suportados."], alignment: 'justify', margin: [0, 0, 0, 5] },
+      { text: [{ text: "1. RESPONSABILIDADE PELO VEÍCULO. ", bold: true }, "O PROPRIETÁRIO declara ser legítimo titular e que o veículo está livre de ônus ou restrições não informados, respondendo por multas, tributos, débitos, gravames, bloqueios, ações, direitos de terceiros e demais ônus decorrentes de fatos anteriores à entrega, ainda que identificados ou cobrados posteriormente, obrigando-se a regularizá-los e a ressarcir integralmente a CONCESSIONÁRIA pelos valores e prejuízos suportados."], alignment: 'justify', margin: [0, 0, 0, 4] },
 
-      { text: [{ text: "2. CONDIÇÕES E AVALIAÇÃO. ", bold: true }, "O valor atribuído considera o estado de conservação, funcionamento, características e quilometragem apresentados na avaliação. O veículo deverá ser entregue nas mesmas condições, ressalvado o desgaste normal. A constatação de avaria, defeito preexistente não informado, divergência de quilometragem, restrição ou circunstância anterior à entrega que reduza seu valor ou prejudique sua transferência ou comercialização autoriza a CONCESSIONARIA a reavaliá-lo ou cancelar sua aceitação como parte do pagamento."], alignment: 'justify', margin: [0, 0, 0, 5] },
+      { text: [{ text: "2. CONDIÇÕES E AVALIAÇÃO. ", bold: true }, "O valor atribuído considera o estado de conservação, funcionamento, características e quilometragem apresentados na avaliação. O veículo deverá ser entregue nas mesmas condições, ressalvado o desgaste normal. A constatação de avaria, defeito preexistente não informado, divergência de quilometragem, restrição ou circunstância anterior à entrega que reduza seu valor ou prejudique sua transferência ou comercialização autoriza a CONCESSIONÁRIA a reavaliá-lo ou cancelar sua aceitação como parte do pagamento."], alignment: 'justify', margin: [0, 0, 0, 4] },
 
-      { text: [{ text: "3. DESFAZIMENTO, RESSARCIMENTO E SOLIDARIEDADE. ", bold: true }, "Havendo impedimento à transferência ou comercialização por fato anterior à entrega, o PROPRIETÁRIO será notificado para regularização. Não solucionado, a CONCESSIONÁRIA poderá desfazer a aceitação, disponibilizar o veículo para devolução e exigir a restituição do valor atribuído na negociação, acrescido de atualização monetária, encargos legais e despesas comprovadas. Sendo CLIENTE e PROPRIETÁRIO pessoas distintas, ambos respondem solidariamente pelas obrigações deste Termo."], alignment: 'justify', margin: [0, 0, 0, 5] },
+      { text: [{ text: "3. DESFAZIMENTO, RESSARCIMENTO E SOLIDARIEDADE. ", bold: true }, "Havendo impedimento à transferência ou comercialização por fato anterior à entrega, o PROPRIETÁRIO será notificado para regularização. Não solucionado, a CONCESSIONÁRIA poderá desfazer a aceitação, disponibilizar o veículo para devolução e exigir a restituição do valor atribuído na negociação, acrescido de atualização monetária, encargos legais e despesas comprovadas. Sendo CLIENTE e PROPRIETÁRIO pessoas distintas, ambos respondem solidariamente pelas obrigações deste Termo."], alignment: 'justify', margin: [0, 0, 0, 4] },
 
-      { text: [{ text: "4. MANDATO E LETRA DE CÂMBIO. ", bold: true }, "Para garantia e cobrança das obrigações deste Termo, o CLIENTE/ADQUIRENTE e, quando distinto, o PROPRIETÁRIO outorgam à CONCESSIONÁRIA RECEBEDORA mandato com poderes específicos para sacar Letra de Câmbio contra qualquer deles ou ambos, limitada ao valor necessário ao cumprimento das obrigações assumidas, inclusive restituição do valor atribuído ao veículo, débitos, ônus, prejuízos e despesas de regularização ou desfazimento, com atualização monetária e encargos legais. O mandato somente poderá ser exercido em caso de inadimplemento, mediante prévia notificação para pagamento ou regularização."], alignment: 'justify', margin: [0, 0, 0, 5] },
+      { text: [{ text: "4. MANDATO E LETRA DE CÂMBIO. ", bold: true }, "Para garantia e cobrança das obrigações deste Termo, o CLIENTE/ADQUIRENTE e, quando distinto, o PROPRIETÁRIO outorgam à CONCESSIONÁRIA RECEBEDORA mandato com poderes específicos para sacar Letra de Câmbio contra qualquer deles ou ambos, limitada ao valor necessário ao cumprimento das obrigações assumidas, inclusive restituição do valor atribuído ao veículo, débitos, ônus, prejuízos e despesas de regularização ou desfazimento, com atualização monetária e encargos legais. O mandato somente poderá ser exercido em caso de inadimplemento, mediante prévia notificação para pagamento ou regularização."], alignment: 'justify', margin: [0, 0, 0, 4] },
 
-      { text: "O CLIENTE e, quando distinto, o PROPRIETÁRIO declaram que leram, compreenderam e concordam com este instrumento e que são verdadeiras as informações prestadas.", alignment: 'justify', margin: [0, 0, 0, 8] },
+      { text: "O CLIENTE e, quando distinto, o PROPRIETÁRIO declaram que leram, compreenderam e concordam com este instrumento e que são verdadeiras as informações prestadas.", alignment: 'justify', margin: [0, 0, 0, 6] },
 
-      { text: [{ text: "Local: ", bold: true }, localStr, { text: "   Data: ", bold: true }, dataStr], margin: [0, 0, 0, 18] },
+      { text: [{ text: "Local: ", bold: true }, localStr, { text: "   Data: ", bold: true }, dataStr], margin: [0, 0, 0, 4] },
+
+      { text: "\n\n\n", margin: [0, 0, 0, 0] },
 
       {
         columns: [
@@ -235,6 +237,7 @@ function generateTermoResponsabilidade(d, docType) {
     styles: { header: { fontSize: 12, bold: true } }
   };
 }
+
 
 function generateProcuracaoUsado(d) {
   const p = d.avalista?.nome ? d.avalista : (d.proprietario || {});
