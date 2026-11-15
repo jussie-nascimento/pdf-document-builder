@@ -44,11 +44,12 @@ const DataReview = ({ selectedDocs }: Props) => {
       </CardHeader>
       <CardContent className="space-y-6">
         <Section
-          title="Veículo Usado (Troca)"
+          title="Veículo Usado — Dação 2026"
           items={[
             ["Placa", data.veiculo.placa],
-            ["Marca", data.veiculo.marca],
-            ["Modelo", data.veiculo.modelo],
+            ["Marca/Modelo (2026)", data.veiculo.marcaModelo || [data.veiculo.marca, data.veiculo.modelo].filter(Boolean).join(" ")],
+            ["Marca (legado)", data.veiculo.marca],
+            ["Modelo (legado)", data.veiculo.modelo],
             ["Chassi", data.veiculo.chassi],
             ["RENAVAM", data.veiculo.renavam],
             ["Ano Fab.", data.veiculo.anoFabricacao],
@@ -74,7 +75,7 @@ const DataReview = ({ selectedDocs }: Props) => {
           />
         )}
         <Section
-          title="Proprietário / Outorgante"
+          title="CLIENTE / ADQUIRENTE (Comprador)"
           items={[
             ["Nome", data.proprietario.nome],
             ["CPF/CNPJ", data.proprietario.cpfCnpj],
@@ -86,7 +87,7 @@ const DataReview = ({ selectedDocs }: Props) => {
           ]}
         />
         <Section
-          title="Avalista"
+          title="PROPRIETÁRIO DO USADO (distinto do cliente)"
           items={[
             ["Nome", data.avalista.nome],
             ["CPF/CNPJ", data.avalista.cpfCnpj],
@@ -94,6 +95,17 @@ const DataReview = ({ selectedDocs }: Props) => {
             ["Endereço", data.avalista.endereco],
           ]}
         />
+        {data.concessionaria && (
+          <Section
+            title="Concessionária Recebedora (2026)"
+            items={[
+              ["Razão Social", data.concessionaria.razaoSocial],
+              ["CNPJ", data.concessionaria.cnpj],
+              ["Endereço", data.concessionaria.endereco],
+              ["Cidade/UF", data.concessionaria.cidadeUf],
+            ]}
+          />
+        )}
         {data.coaf.nomeRazaoSocial && (
           <Section
             title="COAF"
@@ -116,10 +128,10 @@ const DataReview = ({ selectedDocs }: Props) => {
           </div>
         </div>
 
-        {data.data && (
+        {(data.local || data.data) && (
           <div className="text-sm">
-            <span className="text-muted-foreground">Data: </span>
-            <span className="font-medium">{data.data}</span>
+            <span className="text-muted-foreground">Local/Data: </span>
+            <span className="font-medium">{[data.local, data.data].filter(Boolean).join(", ")}</span>
           </div>
         )}
       </CardContent>
