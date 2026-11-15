@@ -5,6 +5,7 @@ import { FormData, formSchema, DocumentType } from "@/types/document";
 import StepperIndicator from "@/components/StepperIndicator";
 import PdfUploader, { ExtractionResult, ImportMode } from "@/components/PdfUploader";
 import VehicleDataForm from "@/components/forms/VehicleDataForm";
+import ConcessionariaDataForm from "@/components/forms/ConcessionariaDataForm";
 import NewVehicleDataForm from "@/components/forms/NewVehicleDataForm";
 import PersonDataForm from "@/components/forms/PersonDataForm";
 import CoafDataForm from "@/components/forms/CoafDataForm";
@@ -141,11 +142,12 @@ const Index = () => {
                   importMode={importMode}
                   onImportModeChange={setImportMode}
                 />
-                <PersonDataForm form={form} prefix="proprietario" title={selectedDocs.includes("termo_responsabilidade_avalista") ? "Comprador / Avalista" : "Comprador"} />
+                <PersonDataForm form={form} prefix="proprietario" title="CLIENTE / ADQUIRENTE (Comprador)" />
                 <NewVehicleDataForm form={form} />
                 {selectedDocs.includes("termo_responsabilidade_avalista") && (
-                  <PersonDataForm form={form} prefix="avalista" title="Proprietário do Usado" />
+                  <PersonDataForm form={form} prefix="avalista" title="PROPRIETÁRIO DO USADO (só se distinto do cliente)" />
                 )}
+                <ConcessionariaDataForm form={form} />
                 <VehicleDataForm form={form} />
                 <CoafDataForm form={form} />
                 <div className="max-w-xs pt-4">
