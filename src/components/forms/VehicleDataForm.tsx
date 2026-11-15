@@ -12,10 +12,12 @@ interface Props {
 const VehicleDataForm = ({ form }: Props) => {
   const fields = [
     { name: "veiculo.placa" as const, label: "Placa" },
-    { name: "veiculo.marca" as const, label: "Marca" },
-    { name: "veiculo.modelo" as const, label: "Modelo" },
+    { name: "veiculo.marcaModelo" as const, label: "Marca/Modelo (2026)" },
+    { name: "veiculo.marca" as const, label: "Marca (legado)" },
+    { name: "veiculo.modelo" as const, label: "Modelo (legado)" },
     { name: "veiculo.chassi" as const, label: "Chassi" },
     { name: "veiculo.renavam" as const, label: "RENAVAM" },
+    { name: "veiculo.ano" as const, label: "Ano (2026)" },
     { name: "veiculo.anoFabricacao" as const, label: "Ano Fabricação" },
     { name: "veiculo.anoModelo" as const, label: "Ano Modelo" },
     { name: "veiculo.cor" as const, label: "Cor" },
